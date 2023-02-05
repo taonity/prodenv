@@ -1,0 +1,15 @@
+version: '2.4'
+
+services:
+  webhook:
+    image: generaltao725/docker-webhook
+    container_name: prodenv-docker-webhook
+    ports: 
+     - "9000:9000"
+    volumes: 
+      - ./shared:/etc/webhook/shared
+      - ../assets:/etc/webhook/assets
+      - //var/run/docker.sock:/var/run/docker.sock
+    environment:
+     - "DOCKER_USERNAME=generaltao725"
+      
