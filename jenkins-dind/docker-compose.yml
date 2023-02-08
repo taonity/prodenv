@@ -1,0 +1,29 @@
+version: '2.4'
+
+services:
+  prodenv-jenkins-dind:
+    image: docker:dind
+    container_name: prodenv-jenkins-dind
+    privileged: true
+    networks: 
+      jenkins:
+        aliases:
+          - docker
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - prodenv-jenkins-data:/certs/client
+      - prodenv-jenkins-data:/var/jenkins_home
+    ports:
+      - 2376:2376
+    healthcheck:
+      test: docker ps || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  prodenv-jenkins-data:
+
+networks:
+  jenkins:

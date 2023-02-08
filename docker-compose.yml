@@ -1,0 +1,27 @@
+version: '2.4'
+
+services:
+
+  prodenv-docker-webhook:
+    extends:
+      file: docker-webhook/docker-compose.yml
+      service: prodenv-docker-webhook
+
+  prodenv-jenkins-dind:
+    extends:
+      file: jenkins-dind/docker-compose.yml
+      service: prodenv-jenkins-dind
+
+  prodenv-jenkins:
+    extends:
+      file: jenkins/docker-compose.yml
+      service: prodenv-jenkins
+    depends_on:
+      prodenv-jenkins-dind:
+        condition: service_healthy
+
+volumes:
+  prodenv-jenkins-data:
+
+networks:
+  jenkins:
