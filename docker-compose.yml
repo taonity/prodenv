@@ -20,8 +20,41 @@ services:
       prodenv-jenkins-dind:
         condition: service_healthy
 
+  prodenv-loki:
+    extends:
+      file: loki/docker-compose.yml
+      service: prodenv-loki
+    depends_on:
+      prodenv-minio:
+        condition: service_healthy
+
+  prodenv-promtail:
+    extends:
+      file: promtail/docker-compose.yml
+      service: prodenv-promtail
+    depends_on:
+      prodenv-loki:
+        condition: service_healthy
+
+  prodenv-minio:
+    extends:
+      file: minio/docker-compose.yml
+      service: prodenv-minio
+
+  prodenv-grafana:
+    extends:
+      file: grafana/docker-compose.yml
+      service: prodenv-grafana
+    depends_on:
+      prodenv-loki:
+        condition: service_healthy
+      prodenv-promtail:
+        condition: service_started
+
 volumes:
   prodenv-jenkins-data:
+  prodenv-minio-data:
 
 networks:
   jenkins:
+  loki:
