@@ -1,4 +1,14 @@
 ---
+extraArgs:
+  config.expand-env: true
+
+env:
+  - name: MINIO_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: loki-access-db
+        key: key
+
 server:
   http_listen_port: 3100
 schema_config:
@@ -19,7 +29,7 @@ common:
       insecure: true
       bucketnames: loki-data
       access_key_id: loki
-      secret_access_key: supersecret
+      secret_access_key: ${MINIO_SECRET_KEY}
       s3forcepathstyle: true
   ring:
     kvstore:

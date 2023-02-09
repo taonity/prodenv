@@ -12,9 +12,10 @@ services:
         minio server /data
     environment:
       - MINIO_ACCESS_KEY=loki
-      - MINIO_SECRET_KEY=supersecret
       - MINIO_PROMETHEUS_AUTH_TYPE=public
       - MINIO_UPDATE=off
+    env_file:
+     - ../.env
     ports:
       - 9000:9000
     volumes:
