@@ -1,16 +1,8 @@
 ---
-extraArgs:
-  config.expand-env: true
-
-env:
-  - name: MINIO_SECRET_KEY
-    valueFrom:
-      secretKeyRef:
-        name: loki-access-db
-        key: key
-
 server:
   http_listen_port: 3100
+  log_level: debug
+
 schema_config:
   configs:
     - from: 2021-08-01
@@ -25,11 +17,11 @@ common:
   replication_factor: 1
   storage:
     s3:
-      endpoint: prodenv-minio:9000
-      insecure: true
+      endpoint: prodenv-minio:9001
+      insecure: true  
       bucketnames: loki-data
       access_key_id: loki
-      secret_access_key: ${MINIO_SECRET_KEY}
+      secret_access_key: supersecret
       s3forcepathstyle: true
   ring:
     kvstore:
@@ -38,3 +30,7 @@ ruler:
   storage:
     s3:
       bucketnames: loki-ruler
+
+ingester:
+  chunk_idle_period: 20s
+  chunk_retain_period: 20s

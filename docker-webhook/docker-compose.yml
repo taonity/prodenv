@@ -8,8 +8,8 @@ services:
      - "9000:9000"
     volumes: 
       - ./shared:/etc/webhook/shared
-      - /etc/webhook/cache:/etc/webhook/cache
-      - /var/run/docker.sock:/var/run/docker.sock
+      - //etc/webhook/cache:/etc/webhook/cache
+      - //var/run/docker.sock:/var/run/docker.sock
     env_file:
      - ../.env
     environment:

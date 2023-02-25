@@ -41,6 +41,14 @@ services:
       file: minio/docker-compose.yml
       service: prodenv-minio
 
+  prodenv-mc:
+    extends:
+      file: mc/docker-compose.yml
+      service: prodenv-mc
+    depends_on:
+      prodenv-minio:
+        condition: service_healthy
+
   prodenv-grafana:
     extends:
       file: grafana/docker-compose.yml
@@ -50,10 +58,18 @@ services:
         condition: service_healthy
       prodenv-promtail:
         condition: service_started
+  
+  prodenv-docker-volume-backup:
+    extends:
+      file: docker-volume-backup/docker-compose.yml
+      service: prodenv-docker-volume-backup
 
 volumes:
+  prodenv-docker-volume-backup-data:
   prodenv-jenkins-data:
   prodenv-minio-data:
+  java-discord-help-bot-volume-db:
+  bruh:
 
 networks:
   jenkins:

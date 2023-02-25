@@ -1,0 +1,19 @@
+version: '2.4'
+
+services:
+  prodenv-mc:
+    image: minio/mc:RELEASE.2023-02-16T19-20-11Z
+    container_name: prodenv-mc
+    env_file:
+     - ../.env
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set minio http://prodenv-minio:9001 $MINIO_ACCESS_KEY $MINIO_ROOT_PASSWORD;
+      /usr/bin/mc admin trace minio;
+      exit 0;
+      "
+    networks:
+      - loki
+
+networks:
+  loki:
