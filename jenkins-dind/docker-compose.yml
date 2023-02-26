@@ -15,6 +15,7 @@ services:
       - prodenv-jenkins-data:/certs/client
       - prodenv-jenkins-data:/var/jenkins_home
     ports:
+    # todo might be redundant
       - 2376:2376
     healthcheck:
       test: docker ps || exit 1

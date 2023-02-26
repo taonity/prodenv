@@ -3,8 +3,6 @@ version: '2.4'
 services:
   prodenv-loki:
     image: grafana/loki:2.7.1
-    ports:
-      - 3100:3100
     volumes:
       - ./configs:/etc/loki
     command: "-config.file=/etc/loki/config.yaml -config.expand-env=true"
@@ -16,7 +14,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - loki
+      - loki-network
 
 networks:
-  loki:
+  loki-network:

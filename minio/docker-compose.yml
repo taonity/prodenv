@@ -18,7 +18,6 @@ services:
     env_file:
      - ../.env
     ports:
-      - 9001:9000
       - 9002:9002
     volumes:
       - prodenv-minio-data:/data
@@ -28,10 +27,10 @@ services:
       timeout: 1s
       retries: 3
     networks:
-      - loki
+      - loki-network
 
 values:
   prodenv-minio-data:
 
 networks:
-  loki:
+  loki-network:

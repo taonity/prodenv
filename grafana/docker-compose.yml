@@ -34,7 +34,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - loki
+      - loki-network
 
 networks:
-  loki:
+  loki-network:

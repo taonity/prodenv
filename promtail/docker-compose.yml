@@ -8,7 +8,7 @@ services:
       - //var/run/docker.sock:/var/run/docker.sock
     command: -config.file=/etc/promtail/config.yaml
     networks:
-      - loki
+      - loki-network
 
 networks:
-  loki:
+  loki-network:

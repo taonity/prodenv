@@ -64,13 +64,18 @@ services:
       file: docker-volume-backup/docker-compose.yml
       service: prodenv-docker-volume-backup
 
+  prodenv-test:
+    extends:
+      file: test/docker-compose.yml
+      service: prodenv-test
+
 volumes:
   prodenv-docker-volume-backup-data:
   prodenv-jenkins-data:
   prodenv-minio-data:
   java-discord-help-bot-volume-db:
-  bruh:
+  br:
 
 networks:
   jenkins:
-  loki:
+  loki-network:

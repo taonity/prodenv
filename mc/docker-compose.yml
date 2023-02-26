@@ -8,12 +8,12 @@ services:
      - ../.env
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set minio http://prodenv-minio:9001 $MINIO_ACCESS_KEY $MINIO_ROOT_PASSWORD;
+      /usr/bin/mc alias set minio http://prodenv-minio:9000 $MINIO_ACCESS_KEY $MINIO_ROOT_PASSWORD;
       /usr/bin/mc admin trace minio;
       exit 0;
       "
     networks:
-      - loki
+      - loki-network
 
 networks:
-  loki:
+  loki-network:
