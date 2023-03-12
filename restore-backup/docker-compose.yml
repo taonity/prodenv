@@ -1,0 +1,27 @@
+version: '2.4'
+
+services:
+  prodenv-restore-backup:
+    image: generaltao725/command-runner
+    container_name: restore-backup
+    environment:
+      - COMMAND_RUNNER_GROUP=group-1
+    networks:
+      - loki-network
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      - ./shared:/etc/runner/scripts/shared:ro
+      - prodenv-docker-volume-backup-data:/archive:ro
+
+      - prodenv-mc-data:/backup/prodenv-mc-data
+      - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db
+
+
+networks:
+  loki-network:
+
+volumes:
+  prodenv-docker-volume-backup-data:
+  prodenv-jenkins-data:
+  prodenv-minio-data:
+  java-discord-help-bot-volume-db:

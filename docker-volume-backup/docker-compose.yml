@@ -7,8 +7,7 @@ services:
     env_file: 
      - ./backup.env
     volumes:
-      - prodenv-jenkins-data:/backup/prodenv-jenkins-data:ro
-      - prodenv-minio-data:/backup/prodenv-minio-data:ro
+      - prodenv-mc-data:/backup/prodenv-mc-data:ro
       - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db:ro
 
       - //var/run/docker.sock:/var/run/docker.sock:ro

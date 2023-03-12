@@ -69,12 +69,22 @@ services:
       file: test/docker-compose.yml
       service: prodenv-test
 
+  prodenv-restore-backup:
+    extends:
+      file: restore-backup/docker-compose.yml
+      service: prodenv-restore-backup
+    depends_on:
+      prodenv-mc:
+        condition: service_started
+
 volumes:
   prodenv-docker-volume-backup-data:
   prodenv-jenkins-data:
   prodenv-minio-data:
+  prodenv-minio-mirror-data:
   java-discord-help-bot-volume-db:
   br:
+  prodenv-mc-data:
 
 networks:
   jenkins:

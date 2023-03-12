@@ -6,14 +6,25 @@ services:
     container_name: prodenv-mc
     env_file:
      - ../.env
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set minio http://prodenv-minio:9000 $MINIO_ACCESS_KEY $MINIO_ROOT_PASSWORD;
-      /usr/bin/mc admin trace minio;
-      exit 0;
-      "
+    entrypoint: 
+      - sh
+      - -euc
+      - |
+        /usr/bin/mc alias set minio http://prodenv-minio:9000 $MINIO_ACCESS_KEY $MINIO_ROOT_PASSWORD && \
+        tail -f /dev/null
+    volumes:
+     - prodenv-mc-data:/backup
     networks:
       - loki-network
+    labels:
+      - "docker-volume-backup.archive-pre=/bin/bash -c 'mc mirror --remove --overwrite minio/loki-data /backup/current'"
+      - "command-runner.group=group-1"
+      - "command-runner.shell=/bin/sh -c"
+      - "command-runner.command=mc mirror --overwrite /backup/archived minio/loki-data; rm -r /backup/archived"
+
 
 networks:
   loki-network:
+
+values:
+ prodenv-mc-data:
