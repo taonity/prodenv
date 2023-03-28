@@ -1,7 +1,7 @@
 ---
 server:
   http_listen_port: 3100
-  log_level: debug
+#  log_level: debug
 
 schema_config:
   configs:
@@ -33,3 +33,16 @@ ruler:
 
 ingester:
   chunk_idle_period: 1m
+
+# table_manager:
+#   retention_deletes_enabled: true
+#   retention_period: 10m
+
+compactor:
+  retention_enabled: true
+  retention_delete_delay: 1m
+  delete_request_cancel_period: 1m
+
+limits_config:
+  retention_period: 48h
+

@@ -1,0 +1,19 @@
+version: '2.4'
+
+services:
+
+  appenv-java-discord-help-bot-make-backup:
+    image: offen/docker-volume-backup:v2.25.1
+    container_name: appenv-java-discord-help-bot-make-backup
+    env_file: 
+     - ./backup.env
+    volumes:
+      - java-discord-help-bot-volume_java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume:ro
+
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      - appenv-java-discord-help-bot-backup-data:/archive
+
+volumes:
+  java-discord-help-bot-volume_java-discord-help-bot-volume-db:
+    external: true
+  appenv-java-discord-help-bot-backup-data:

@@ -1,0 +1,8 @@
+version: '2.4'
+
+services:
+
+  prodenv-restore-backup:
+    extends:
+      file: java-discord-help-bot/restore-backup/docker-compose.yml
+      service: java-discord-help-bot-restore-backup

@@ -4,6 +4,7 @@ version: '2.4'
 services:
   prodenv-grafana:
     image: grafana/grafana:9.3.6
+    container_name: prodenv-grafana
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true

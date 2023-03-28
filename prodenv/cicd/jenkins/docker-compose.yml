@@ -4,7 +4,6 @@ services:
   prodenv-jenkins:
     image: generaltao725/prodenv-jenkins
     container_name:  prodenv-jenkins
-    restart: on-failure
     networks: 
       jenkins:
         aliases:

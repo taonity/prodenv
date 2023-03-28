@@ -3,6 +3,7 @@ version: '2.4'
 services:
   prodenv-promtail:
     image: grafana/promtail:2.7.1
+    container_name: prodenv-promtail
     volumes:
       - ./config.yaml:/etc/promtail/config.yaml:ro
       - //var/run/docker.sock:/var/run/docker.sock

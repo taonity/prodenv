@@ -1,27 +1,23 @@
 version: '2.4'
 
 services:
-  prodenv-restore-backup:
+  appenv-java-discord-help-bot-restore-backup:
     image: generaltao725/command-runner
-    container_name: restore-backup
+    container_name: appenv-java-discord-help-bot-backup
     environment:
-      - COMMAND_RUNNER_GROUP=group-1
-    networks:
-      - loki-network
+      - COMMAND_RUNNER_GROUP=java-discord-help-bot
+    command:
+      - backup-2023-03-12T17-52-00.tar.gz
     volumes:
       - //var/run/docker.sock:/var/run/docker.sock:ro
       - ./shared:/etc/runner/scripts/shared:ro
-      - prodenv-docker-volume-backup-data:/archive:ro
+      - prodenv-backup-data:/archive:ro
 
       - prodenv-mc-data:/backup/prodenv-mc-data
       - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db
 
-
-networks:
-  loki-network:
-
 volumes:
-  prodenv-docker-volume-backup-data:
+  prodenv-backup-data:
   prodenv-jenkins-data:
   prodenv-minio-data:
   java-discord-help-bot-volume-db:

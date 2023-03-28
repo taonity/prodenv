@@ -4,17 +4,17 @@ services:
 
   prodenv-docker-webhook:
     extends:
-      file: docker-webhook/docker-compose.yml
+      file: cicd/docker-webhook/docker-compose.yml
       service: prodenv-docker-webhook
 
   prodenv-jenkins-dind:
     extends:
-      file: jenkins-dind/docker-compose.yml
+      file: cicd/jenkins-dind/docker-compose.yml
       service: prodenv-jenkins-dind
 
   prodenv-jenkins:
     extends:
-      file: jenkins/docker-compose.yml
+      file: cicd/jenkins/docker-compose.yml
       service: prodenv-jenkins
     depends_on:
       prodenv-jenkins-dind:
@@ -22,7 +22,7 @@ services:
 
   prodenv-loki:
     extends:
-      file: loki/docker-compose.yml
+      file: logging/loki/docker-compose.yml
       service: prodenv-loki
     depends_on:
       prodenv-minio:
@@ -30,7 +30,7 @@ services:
 
   prodenv-promtail:
     extends:
-      file: promtail/docker-compose.yml
+      file: logging/promtail/docker-compose.yml
       service: prodenv-promtail
     depends_on:
       prodenv-loki:
@@ -38,12 +38,12 @@ services:
 
   prodenv-minio:
     extends:
-      file: minio/docker-compose.yml
+      file: logging/minio/docker-compose.yml
       service: prodenv-minio
 
   prodenv-mc:
     extends:
-      file: mc/docker-compose.yml
+      file: logging/mc/docker-compose.yml
       service: prodenv-mc
     depends_on:
       prodenv-minio:
@@ -51,7 +51,7 @@ services:
 
   prodenv-grafana:
     extends:
-      file: grafana/docker-compose.yml
+      file: logging/grafana/docker-compose.yml
       service: prodenv-grafana
     depends_on:
       prodenv-loki:
@@ -59,10 +59,15 @@ services:
       prodenv-promtail:
         condition: service_started
   
-  prodenv-docker-volume-backup:
+  prodenv-make-backup:
     extends:
-      file: docker-volume-backup/docker-compose.yml
-      service: prodenv-docker-volume-backup
+      file: backup/make-backup/docker-compose.yml
+      service: prodenv-make-backup
+    depends_on:
+      prodenv-minio:
+        condition: service_healthy
+      prodenv-mc:
+        condition: service_started
 
   prodenv-test:
     extends:
@@ -71,14 +76,14 @@ services:
 
   prodenv-restore-backup:
     extends:
-      file: restore-backup/docker-compose.yml
+      file: backup/restore-backup/docker-compose.yml
       service: prodenv-restore-backup
     depends_on:
       prodenv-mc:
         condition: service_started
 
 volumes:
-  prodenv-docker-volume-backup-data:
+  prodenv-backup-data:
   prodenv-jenkins-data:
   prodenv-minio-data:
   prodenv-minio-mirror-data:
