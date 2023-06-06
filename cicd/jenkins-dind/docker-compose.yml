@@ -14,6 +14,7 @@ services:
     volumes:
       - prodenv-jenkins-data:/certs/client
       - prodenv-jenkins-data:/var/jenkins_home
+      - prodenv-jenkins-data:/var/run/docker.sock
     ports:
     # todo might be redundant
       - 2376:2376

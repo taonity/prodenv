@@ -19,6 +19,7 @@ services:
     volumes:
       - prodenv-jenkins-data:/var/jenkins_home
       - prodenv-jenkins-data:/certs/client
+      - prodenv-jenkins-data:/var/run/docker.sock
 
 volumes:
   prodenv-jenkins-data:
