@@ -84,6 +84,7 @@ services:
 
 volumes:
   prodenv-backup-data:
+  prodenv-jenkins-certs:
   prodenv-jenkins-data:
   prodenv-minio-data:
   prodenv-minio-mirror-data:
