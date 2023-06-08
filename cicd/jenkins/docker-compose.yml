@@ -10,8 +10,8 @@ services:
           - docker
     environment:
       - DOCKER_HOST=tcp://docker:2376
-      - DOCKER_CERT_PATH=
-      - TESTCONTAINERS_HOST_OVERRIDE=localhost
+      - DOCKER_CERT_PATH=/certs/client
+      - DOCKER_TLS_VERIFY=1
       - JAVA_OPTS=-Dorg.jenkinsci.plugins.ghprb.GhprbRepository.webhook.insecure=true
     ports:
       - 8080:8080
@@ -19,6 +19,7 @@ services:
     volumes:
       - prodenv-jenkins-data:/var/jenkins_home
       - prodenv-jenkins-data:/certs/client
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   prodenv-jenkins-data:
