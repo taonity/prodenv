@@ -16,7 +16,7 @@ services:
     ports:
       - 8080:8080
       - 50000:50000
-    volumes:
+    volumes: 
       - prodenv-jenkins-data:/var/jenkins_home
       - prodenv-jenkins-certs:/certs/client
       # - /var/run/docker.sock:/var/run/docker.sock
