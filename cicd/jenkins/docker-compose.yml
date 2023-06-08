@@ -12,14 +12,14 @@ services:
       - DOCKER_HOST=tcp://docker:2376
       - DOCKER_CERT_PATH=/certs/client
       - DOCKER_TLS_VERIFY=1
-      - JAVA_OPTS=-Dorg.jenkinsci.plugins.ghprb.GhprbRepository.webhook.insecure=true
+      # - JAVA_OPTS=-Dorg.jenkinsci.plugins.ghprb.GhprbRepository.webhook.insecure=true
     ports:
       - 8080:8080
       - 50000:50000
     volumes:
       - prodenv-jenkins-data:/var/jenkins_home
-      - prodenv-jenkins-data:/certs/client
-      - /var/run/docker.sock:/var/run/docker.sock
+      - prodenv-jenkins-certs:/certs/client
+      # - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   prodenv-jenkins-data:
