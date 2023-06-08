@@ -11,7 +11,6 @@ services:
           - docker
     environment:
       - DOCKER_TLS_CERTDIR=/certs
-      - TESTCONTAINERS_HOST_OVERRIDE=localhost
     volumes:
       - prodenv-jenkins-data:/certs/client
       - prodenv-jenkins-data:/var/jenkins_home

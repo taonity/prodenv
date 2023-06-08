@@ -12,6 +12,7 @@ services:
       - DOCKER_HOST=tcp://docker:2376
       - DOCKER_CERT_PATH=/certs/client
       - DOCKER_TLS_VERIFY=1
+      - TESTCONTAINERS_HOST_OVERRIDE=localhost
       - JAVA_OPTS=-Dorg.jenkinsci.plugins.ghprb.GhprbRepository.webhook.insecure=true
     ports:
       - 8080:8080
