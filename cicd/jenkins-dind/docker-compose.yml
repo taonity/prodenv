@@ -11,7 +11,7 @@ services:
         aliases:
           - docker
     environment:
-      - DOCKER_TLS_CERTDIR=/certs
+      - DOCKER_TLS_CERTDIR=
     volumes:
       - prodenv-jenkins-data:/certs/client
       - prodenv-jenkins-data:/var/jenkins_home
