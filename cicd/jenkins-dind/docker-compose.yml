@@ -5,6 +5,7 @@ services:
     image: docker:dind
     container_name: prodenv-jenkins-dind
     privileged: true
+    command: --storage-driver overlay2
     networks: 
       jenkins:
         aliases:
