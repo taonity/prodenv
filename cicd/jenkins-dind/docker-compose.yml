@@ -9,7 +9,7 @@ services:
     networks: 
       jenkins:
         aliases:
-          - docker
+          - prodenv-jenkins-dind
     environment:
       DOCKER_TLS_CERTDIR: ""
       # Improve performance with overlayfs.

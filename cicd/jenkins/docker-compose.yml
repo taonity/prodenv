@@ -7,9 +7,9 @@ services:
     networks: 
       jenkins:
         aliases:
-          - docker
+          - prodenv-jenkins
     environment:
-      - DOCKER_HOST=tcp://docker:2375
+      - DOCKER_HOST=tcp://prodenv-jenkins-dind:2375
     ports:
       - 8080:8080
       - 50000:50000
