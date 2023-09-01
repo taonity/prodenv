@@ -1,9 +1,8 @@
 version: '2.4'
 
 services:
-   prodenv-docker-webhook:
+   docker-webhook:
     image: generaltao725/docker-webhook
-    container_name: prodenv-docker-webhook
     ports: 
      - "9000:9000"
     volumes: 

@@ -2,9 +2,8 @@
 version: '2.4'
 
 services:
-  prodenv-grafana:
+  grafana:
     image: grafana/grafana:9.3.6
-    container_name: prodenv-grafana
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -22,7 +21,7 @@ services:
           - name: Loki
             type: loki
             access: proxy
-            url: http://prodenv-loki:3100
+            url: http://loki:3100
             jsonData:
               httpHeaderName1: "X-Scope-OrgID"
             secureJsonData:

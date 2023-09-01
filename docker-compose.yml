@@ -2,95 +2,97 @@ version: '2.4'
 
 services:
 
-  prodenv-docker-webhook:
+  webhook:
     extends:
       file: cicd/docker-webhook/docker-compose.yml
-      service: prodenv-docker-webhook
+      service: docker-webhook
 
-  prodenv-jenkins-dind:
+  jenkins-dind:
     extends:
       file: cicd/jenkins-dind/docker-compose.yml
-      service: prodenv-jenkins-dind
+      service: jenkins-dind
 
-  prodenv-jenkins:
+  jenkins:
     extends:
       file: cicd/jenkins/docker-compose.yml
-      service: prodenv-jenkins
+      service: jenkins
     depends_on:
-      prodenv-jenkins-dind:
+      jenkins-dind:
         condition: service_healthy
 
-  prodenv-loki:
+  loki:
     extends:
       file: logging/loki/docker-compose.yml
-      service: prodenv-loki
+      service: loki
     depends_on:
-      prodenv-minio:
+      minio:
         condition: service_healthy
 
-  prodenv-promtail:
+  promtail:
     extends:
       file: logging/promtail/docker-compose.yml
-      service: prodenv-promtail
+      service: promtail
     depends_on:
-      prodenv-loki:
+      loki:
         condition: service_healthy
 
-  prodenv-minio:
+  minio:
     extends:
       file: logging/minio/docker-compose.yml
-      service: prodenv-minio
+      service: minio
 
-  prodenv-mc:
+  mc:
     extends:
       file: logging/mc/docker-compose.yml
-      service: prodenv-mc
+      service: mc
     depends_on:
-      prodenv-minio:
+      minio:
         condition: service_healthy
 
-  prodenv-grafana:
+  grafana:
     extends:
       file: logging/grafana/docker-compose.yml
-      service: prodenv-grafana
+      service: grafana
     depends_on:
-      prodenv-loki:
+      loki:
         condition: service_healthy
-      prodenv-promtail:
+      promtail:
         condition: service_started
   
-  prodenv-make-backup:
+  make-backup:
     extends:
       file: backup/make-backup/docker-compose.yml
-      service: prodenv-make-backup
+      service: make-backup
     depends_on:
-      prodenv-minio:
+      minio:
         condition: service_healthy
-      prodenv-mc:
+      mc:
         condition: service_started
 
-  prodenv-test:
+  test:
     extends:
       file: test/docker-compose.yml
-      service: prodenv-test
+      service: test
 
-  prodenv-restore-backup:
+  restore-backup:
     extends:
       file: backup/restore-backup/docker-compose.yml
-      service: prodenv-restore-backup
+      service: restore-backup
     depends_on:
-      prodenv-mc:
+      mc:
         condition: service_started
 
 volumes:
-  prodenv-backup-data:
-  prodenv-jenkins-certs:
-  prodenv-jenkins-data:
-  prodenv-minio-data:
-  prodenv-minio-mirror-data:
+  backup-data:
+  jenkins-certs:
+  jenkins-data:
+  minio-data:
+  minio-mirror-data:
   java-discord-help-bot-volume-db:
   br:
-  prodenv-mc-data:
+  mc-data:
+  tv:
+  jenkins-dind-volumes:
 
 networks:
   jenkins:

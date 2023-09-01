@@ -1,23 +1,24 @@
 version: '2.4'
 
 services:
-  prodenv-jenkins:
-    image: generaltao725/prodenv-jenkins
-    container_name:  prodenv-jenkins
+  jenkins:
+    image: generaltao725/jenkins
     networks: 
       jenkins:
         aliases:
-          - prodenv-jenkins
+          - jenkins
     environment:
-      - DOCKER_HOST=tcp://prodenv-jenkins-dind:2375
+      DOCKER_HOST: tcp://jenkins-dind:2375
+      UID: 1000
+      GID: 1000
     ports:
       - 8080:8080
       - 50000:50000
     volumes: 
-      - prodenv-jenkins-data:/var/jenkins_home
+      - jenkins-data:/var/jenkins_home
 
 volumes:
-  prodenv-jenkins-data:
+  jenkins-data:
 
 networks:
   jenkins:

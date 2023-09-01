@@ -2,14 +2,13 @@ version: '2.4'
 
 services:
 
-  prodenv-make-backup:
+  make-backup:
     image: offen/docker-volume-backup:v2.25.1
-    container_name: prodenv-make-backup
     env_file: 
      - ./backup.env
     volumes:
-      - prodenv-mc-data:/backup/prodenv-mc-data:ro
+      - mc-data:/backup/mc-data:ro
       - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db:ro
 
       - //var/run/docker.sock:/var/run/docker.sock:ro
-      - prodenv-backup-data:/archive
+      - backup-data:/archive

@@ -1,10 +1,9 @@
 version: '2.4'
 
 services:
-  prodenv-test:
-    image: prodenv-test
-    container_name: prodenv-test
-    command: wget prodenv-minio:9000
+  test:
+    image: test
+    command: wget minio:9000
     networks:
       - loki-network
 

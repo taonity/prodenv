@@ -1,19 +1,23 @@
 version: '2.4'
 
 services:
-  prodenv-jenkins-dind:
+  jenkins-dind:
     image: docker:dind
-    container_name: prodenv-jenkins-dind
     privileged: true
     command: ["--tls=false"]
     networks: 
       jenkins:
         aliases:
-          - prodenv-jenkins-dind
+          - jenkins-dind
     environment:
       DOCKER_TLS_CERTDIR: ""
       # Improve performance with overlayfs.
       DOCKER_DRIVER: overlay2
+      UID: 1000
+      GID: 1000
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - jenkins-dind-volumes:/var/lib/docker
     healthcheck:
       test: docker ps || exit 1
       interval: 10s
@@ -21,7 +25,7 @@ services:
       retries: 3
 
 volumes:
-  prodenv-jenkins-data:
+  jenkins-data:
 
 networks:
   jenkins:

@@ -17,7 +17,7 @@ common:
   replication_factor: 1
   storage:
     s3:
-      endpoint: prodenv-minio:9000
+      endpoint: minio:9000
       insecure: true  
       bucketnames: loki-data
       access_key_id: loki

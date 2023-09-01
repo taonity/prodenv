@@ -1,9 +1,8 @@
 version: '2.4'
 
 services:
-  prodenv-restore-backup:
+  restore-backup:
     image: generaltao725/command-runner
-    container_name: prodenv-restore-backup
     environment:
       - COMMAND_RUNNER_GROUP=prodenv
     command:
@@ -11,7 +10,7 @@ services:
     volumes:
       - //var/run/docker.sock:/var/run/docker.sock:ro
       - ./shared:/etc/runner/scripts/shared:ro
-      - prodenv-backup-data:/archive:ro
+      - backup-data:/archive:ro
 
-      - prodenv-mc-data:/backup/prodenv-mc-data
+      - mc-data:/backup/mc-data
       - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db
