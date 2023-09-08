@@ -82,6 +82,11 @@ services:
       mc:
         condition: service_started
 
+  portainer:
+    extends:
+      file: portainer/docker-compose.yml
+      service: portainer
+
 volumes:
   backup-data:
   jenkins-certs:
@@ -93,6 +98,7 @@ volumes:
   mc-data:
   tv:
   jenkins-dind-volumes:
+  portainer_data:
 
 networks:
   jenkins:

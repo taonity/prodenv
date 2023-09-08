@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   jenkins-dind:
-    image: docker:dind
+    image: docker:24.0.6-dind
     privileged: true
     command: ["--tls=false"]
     networks: 
