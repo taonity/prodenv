@@ -7,19 +7,6 @@ services:
       file: cicd/docker-webhook/docker-compose.yml
       service: docker-webhook
 
-  jenkins-dind:
-    extends:
-      file: cicd/jenkins-dind/docker-compose.yml
-      service: jenkins-dind
-
-  jenkins:
-    extends:
-      file: cicd/jenkins/docker-compose.yml
-      service: jenkins
-    depends_on:
-      jenkins-dind:
-        condition: service_healthy
-
   loki:
     extends:
       file: logging/loki/docker-compose.yml
@@ -69,11 +56,6 @@ services:
       mc:
         condition: service_started
 
-  test:
-    extends:
-      file: test/docker-compose.yml
-      service: test
-
   restore-backup:
     extends:
       file: backup/restore-backup/docker-compose.yml
@@ -89,17 +71,11 @@ services:
 
 volumes:
   backup-data:
-  jenkins-certs:
-  jenkins-data:
   minio-data:
   minio-mirror-data:
   java-discord-help-bot-volume-db:
-  br:
   mc-data:
-  tv:
-  jenkins-dind-volumes:
   portainer_data:
 
 networks:
-  jenkins:
   loki-network:

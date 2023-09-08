@@ -5,8 +5,6 @@ services:
     image: generaltao725/command-runner:0.1.0
     environment:
       - COMMAND_RUNNER_GROUP=prodenv
-    command:
-      - backup-2023-03-15T18-18-00.tar.gz
     volumes:
       - //var/run/docker.sock:/var/run/docker.sock:ro
       - ./shared:/etc/runner/scripts/shared:ro

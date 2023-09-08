@@ -15,6 +15,3 @@ services:
       retries: 3
     networks:
       - loki-network
-
-networks:
-  loki-network:

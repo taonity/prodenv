@@ -27,9 +27,3 @@ services:
       retries: 3
     networks:
       - loki-network
-
-values:
-  minio-data:
-
-networks:
-  loki-network:
