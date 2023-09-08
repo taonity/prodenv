@@ -25,5 +25,3 @@ services:
       interval: 1s
       timeout: 1s
       retries: 3
-    networks:
-      - loki-network

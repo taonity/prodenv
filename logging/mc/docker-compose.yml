@@ -12,8 +12,6 @@ services:
     volumes:
      - mc-data:/backup
      - ./shared:/shared
-    networks:
-      - loki-network
     labels:
       - "docker-volume-backup.archive-pre=/bin/bash -c 'mc mirror --remove --overwrite minio/loki-data /backup/current'"
       - "command-runner.group=prodenv"

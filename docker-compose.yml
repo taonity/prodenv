@@ -77,5 +77,3 @@ volumes:
   mc-data:
   portainer_data:
 
-networks:
-  loki-network:
