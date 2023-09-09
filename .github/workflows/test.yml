@@ -1,0 +1,18 @@
+name: Run Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Tests
+        working-directory: ./test
+        run: |
+          ./test.sh
