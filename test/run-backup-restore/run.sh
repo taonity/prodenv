@@ -16,6 +16,7 @@ compose_project_service_list=("portainer" "minio" "mc" "restore-backup" "webhook
 
 for service in "${compose_project_service_list[@]}"; do
     if docker ps -q --no-trunc | grep "$(docker compose ps -q $service)" ; then
+        docker compose logs $service
         fail "Service $service is not running."
     fi
 done
