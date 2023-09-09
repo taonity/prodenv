@@ -7,33 +7,33 @@ cd "$(dirname $0)"
 . ../util.sh
 
 
-# docker compose up -d --quiet-pull
+docker compose up -d --quiet-pull
 
-# webhook_logs=$(docker compose logs webhook)
-# if [[ $webhook_logs != *"serving hooks on http://0.0.0.0:9000/hooks/{id}"* ]]; then
-#   fail "Failed to start docker-webhook."
-# fi
+# Just to make sure nothing will fall during 5 sec
+sleep 5
 
-# responce=$(curl -X POST \
-#   -H "Content-Type: application/json" \
-#   -d '{
-#       "repository": {
-#           "name": "webhook-test-image"
-#       }
-#   }' \
-#   http://localhost:9000/hooks/mysecret/docker-webhook)
+compose_project_service_list=("portainer" "minio" "mc" "restore-backup" "webhook" "loki" "promtail" "grafana" "make-backup")
 
-# if [[ $responce != "A payload recieved" ]]; then
-#   fail "Wrong response on POST request."
-# fi
+for service in "${compose_project_service_list[@]}"; do
+    if [ -z $(docker ps -q --no-trunc | grep $(docker compose ps -q $service)) ]; then
+        fail "Service $service is not running."
+    fi
+done
 
-# sleep 10
+compose_project_name=$(basename "$(dirname "$(pwd)")")
+backup_making_logs=$(backup/make-backup/scripts/make.sh)
+if [[ $backup_making_logs != *"container run-backup-restore-mc-1"* ]]; then
+    echo $backup_making_logs
+    fail "Failed to backup mc."
+fi
 
-# webhook_logs=$(docker compose logs webhook)
-# if [[ $webhook_logs != *"Container webhook-test-image-alpine-1  Started"* ]]; then
-#   fail "Failed to start webhook-test-image-alpine."
-# fi
+if [[ $backup_making_logs != *"Finished running backup tasks."* ]]; then
+    echo $backup_making_logs
+    fail "Failed to to finish backup making."
+fi
 
-# if [[ $webhook_logs != *"finished handling mysecret/docker-webhook"* ]]; then
-#   fail "Failed to finish handling the POST request."
-# fi
+backup_restoring_logs=$(backup/restore-backup/scripts/restore.sh backup.latest.tar.gz)
+if [[ $backup_restoring_logs != *"Finish execution"* ]]; then
+    echo $backup_restoring_logs
+    fail "Failed to finish backup restoring."
+fi

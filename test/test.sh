@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -6,7 +6,7 @@ set -e
 
 image_name=$(basename "$(dirname "$(pwd)")")
 
-
+items=("backup" "cicd" "logging" "portainer" "docker-compose.yml")
 
 for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   dir=$(echo "$dir" | cut -c 3-)
@@ -15,18 +15,18 @@ for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   echo "################################################"
   echo ""
 
-  cp -r ../backup "${dir}/backup"
-  cp -r ../cicd "${dir}/cicd"
-  cp -r ../logging "${dir}/logging"
-  cp -r ../portainer "${dir}/portainer"
-  cp -r ../docker-compose.yml "${dir}/docker-compose.yml"
-
-  cp -r envs/* "${dir}/"
+  for item in "${items[@]}"; do
+    cp -r "../$item" "${dir}/$item"
+  done
 
   test="${dir}/run.sh"
   eval "$test"
 
-  remove_all_docker_containers
+  remove_docker_compose_project "${dir}/docker-compose.yml"
+
+  for item in "${items[@]}"; do
+    rm -r "${dir}/$item"
+  done
   
   echo ""
   echo "$test passed"

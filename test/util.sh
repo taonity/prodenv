@@ -22,8 +22,12 @@ docker() {
   esac
 }
 
-remove_all_docker_containers() {
-    docker rm -f $(docker ps -aq) 2>/dev/null || echo "No containers to remove."
+remove_docker_compose_project() {
+  if [ -z $1 ]; then 
+    docker compose down -v
+  else
+    docker compose -f $1 down -v
+  fi
 }
 
 info () {
@@ -36,13 +40,13 @@ pass () {
 
 fail () {
   echo "[test:${current_test:-none}:fail] "$1""
-  remove_all_docker_containers
+  remove_docker_compose_project $2
   exit 1
 }
 
 skip () {
   echo "[test:${current_test:-none}:skip] "$1""
-  remove_all_docker_containers
+  remove_docker_compose_project $2
   exit 0
 }
 
