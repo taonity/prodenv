@@ -15,11 +15,11 @@ for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   echo "################################################"
   echo ""
 
-  cp ../backup "${dir}/backup"
-  cp ../cicd "${dir}/cicd"
-  cp ../logging "${dir}/logging"
-  cp ../portainer "${dir}/portainer"
-  cp ../docker-compose.yml "${dir}/docker-compose.yml"
+  cp -r ../backup "${dir}/backup"
+  cp -r ../cicd "${dir}/cicd"
+  cp -r ../logging "${dir}/logging"
+  cp -r ../portainer "${dir}/portainer"
+  cp -r ../docker-compose.yml "${dir}/docker-compose.yml"
 
   cp -r envs/* "${dir}/"
 
