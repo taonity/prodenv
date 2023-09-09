@@ -8,7 +8,6 @@ services:
      - ./backup.env
     volumes:
       - mc-data:/backup/mc-data:ro
-      - java-discord-help-bot-volume-db:/backup/java-discord-help-bot-volume-db:ro
 
       - //var/run/docker.sock:/var/run/docker.sock:ro
       - backup-data:/archive

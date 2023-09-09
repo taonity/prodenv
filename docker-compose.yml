@@ -73,7 +73,6 @@ volumes:
   backup-data:
   minio-data:
   minio-mirror-data:
-  java-discord-help-bot-volume-db:
   mc-data:
   portainer_data:
 

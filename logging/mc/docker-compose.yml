@@ -13,6 +13,7 @@ services:
      - mc-data:/backup
      - ./shared:/shared
     labels:
+      - docker-volume-backup.exec-label=prodenv
       - docker-volume-backup.archive-pre=/bin/bash -c 'mc mirror --remove --overwrite minio/loki-data /backup/current'
       - command-runner.group=prodenv
       - command-runner.shell=/bin/sh -c
