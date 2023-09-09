@@ -16,6 +16,7 @@ for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   for item in "${items[@]}"; do
     cp -r "../$item" "${dir}/$item"
   done
+  cp -r envs "${dir}"
 
   test="${dir}/run.sh"
   eval "$test"
