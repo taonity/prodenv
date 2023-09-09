@@ -15,12 +15,11 @@ sleep 5
 compose_project_service_list=("portainer" "minio" "mc" "restore-backup" "webhook" "loki" "promtail" "grafana" "make-backup")
 
 for service in "${compose_project_service_list[@]}"; do
-    if [ -z $(docker ps -q --no-trunc | grep $(docker compose ps -q $service)) ]; then
+    if docker ps -q --no-trunc | grep "$(docker compose ps -q $service)" ; then
         fail "Service $service is not running."
     fi
 done
 
-compose_project_name=$(basename "$(dirname "$(pwd)")")
 backup_making_logs=$(backup/make-backup/scripts/make.sh)
 if [[ $backup_making_logs != *"container run-backup-restore-mc-1"* ]]; then
     echo $backup_making_logs

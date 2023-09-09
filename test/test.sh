@@ -4,8 +4,6 @@ set -e
 
 . ./util.sh
 
-image_name=$(basename "$(dirname "$(pwd)")")
-
 items=("backup" "cicd" "logging" "portainer" "docker-compose.yml")
 
 for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
@@ -25,7 +23,7 @@ for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   remove_docker_compose_project "${dir}/docker-compose.yml"
 
   for item in "${items[@]}"; do
-    rm -r "${dir}/$item"
+    rm -r "${dir:?}/$item"
   done
   
   echo ""
