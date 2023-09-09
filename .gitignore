@@ -1,4 +1,5 @@
-.env
+cicd/.env
+logging/.env
 test/run-backup-restore/backup
 test/run-backup-restore/cicd
 test/run-backup-restore/logging
