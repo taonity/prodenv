@@ -4,3 +4,5 @@ test/run-backup-restore/backup
 test/run-backup-restore/cicd
 test/run-backup-restore/logging
 test/run-backup-restore/portainer
+test/run-backup-restore/docker-compose.yml
+
