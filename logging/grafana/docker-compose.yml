@@ -6,8 +6,8 @@ services:
     image: grafana/grafana:9.3.6
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    env_file:
+      - ../.env
     ports:
       - 3000:3000
     entrypoint:
