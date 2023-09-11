@@ -15,7 +15,7 @@ sleep 5
 compose_project_service_list=("portainer" "minio" "mc" "restore-backup" "webhook" "loki" "promtail" "grafana" "make-backup")
 
 for service in "${compose_project_service_list[@]}"; do
-    if [ -z `docker-compose ps -q $service` ] || [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q $service)` ]; then
+    if [ -z "$(docker-compose ps -q $service)" ] || [ -z "$(docker ps -q --no-trunc | grep $(docker-compose ps -q $service))" ]; then
         docker compose logs $service
         fail "Service $service is not running."
     fi

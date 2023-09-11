@@ -68,11 +68,17 @@ services:
     extends:
       file: portainer/docker-compose.yml
       service: portainer
+  
+  nginx-proxy-manager:
+    extends:
+      file: nginx-proxy-manager/docker-compose.yml
+      service: nginx-proxy-manager
 
 volumes:
   backup-data:
   minio-data:
   minio-mirror-data:
   mc-data:
-  portainer_data:
+  portainer-data:
+  nginx-proxy-manager-data:
 
