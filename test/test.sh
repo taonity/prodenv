@@ -4,7 +4,7 @@ set -e
 
 . ./util.sh
 
-items=("backup" "cicd" "logging" "portainer" "docker-compose.yml")
+items=("backup" "cicd" "logging" "portainer" "nginx-proxy-manager" "docker-compose.yml")
 
 for dir in $(find -mindepth 1 -maxdepth 1 -type d | sort); do
   dir=$(echo "$dir" | cut -c 3-)
