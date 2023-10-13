@@ -1,0 +1,13 @@
+version: '2.4'
+
+services:
+
+  make-backup:
+    image: offen/docker-volume-backup:v2.25.1
+    env_file: 
+     - ./backup.env
+    volumes:
+      - mc-data:/backup/mc-data:ro
+
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+      - backup-data:/archive

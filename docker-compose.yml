@@ -1,0 +1,99 @@
+version: '2.4'
+
+services:
+
+  webhook:
+    extends:
+      file: cicd/docker-webhook/docker-compose.yml
+      service: docker-webhook
+
+  loki:
+    extends:
+      file: logging/loki/docker-compose.yml
+      service: loki
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  promtail:
+    extends:
+      file: logging/promtail/docker-compose.yml
+      service: promtail
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  minio:
+    extends:
+      file: logging/minio/docker-compose.yml
+      service: minio
+
+  mc:
+    extends:
+      file: logging/mc/docker-compose.yml
+      service: mc
+    depends_on:
+      minio:
+        condition: service_healthy
+  
+  node-exporter:
+    extends:
+      file: logging/node-exporter/docker-compose.yml
+      service: node-exporter
+  
+  prometheus:
+    extends:
+      file: logging/prometheus/docker-compose.yml
+      service: prometheus
+    depends_on:
+      node-exporter:
+        condition: service_started
+
+  grafana:
+    extends:
+      file: logging/grafana/docker-compose.yml
+      service: grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+      promtail:
+        condition: service_started
+      prometheus:
+        condition: service_started
+        
+  make-backup:
+    extends:
+      file: backup/make-backup/docker-compose.yml
+      service: make-backup
+    depends_on:
+      minio:
+        condition: service_healthy
+      mc:
+        condition: service_started
+
+  restore-backup:
+    extends:
+      file: backup/restore-backup/docker-compose.yml
+      service: restore-backup
+    depends_on:
+      mc:
+        condition: service_started
+
+  portainer:
+    extends:
+      file: portainer/docker-compose.yml
+      service: portainer
+  
+  nginx-proxy-manager:
+    extends:
+      file: nginx-proxy-manager/docker-compose.yml
+      service: nginx-proxy-manager
+ 
+volumes:
+  backup-data:
+  minio-data:
+  minio-mirror-data:
+  mc-data:
+  portainer-data:
+  nginx-proxy-manager-data:
+  prometheus_data:

@@ -1,0 +1,14 @@
+version: '2.4'
+
+services:
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:2.10.4'
+    ports:
+      # These ports are in format <host-port>:<container-port>
+      - 443:443 # Public HTTPS Port
+      - 127.0.0.1:80:80 # Public HTTP Port
+      - 127.0.0.1:81:81 # Admin Web Port
+      
+    volumes:
+      - nginx-proxy-manager-data:/data
+      - nginx-proxy-manager-data:/etc/letsencrypt
