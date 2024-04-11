@@ -3,7 +3,7 @@ version: '2.4'
 
 services:
   grafana:
-    image: grafana/grafana:9.3.6
+    image: grafana/grafana:10.4.2
     env_file:
       - ../.env
     ports:
