@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   nginx-proxy-manager:
-    image: 'jc21/nginx-proxy-manager:2.10.4'
+    image: 'jc21/nginx-proxy-manager:2.12.1'
     extra_hosts:
      - "host.docker.internal:host-gateway"
     ports:
