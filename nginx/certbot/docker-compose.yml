@@ -1,0 +1,14 @@
+version: '2.4'
+
+services:
+  certbot:
+    image: infinityofspace/certbot_dns_duckdns
+    # entrypoint: "/bin/sh -c 'ls /etc/letsencrypt/live'"
+    volumes:
+      # - ./../data/certbot/letsencrypt:/etc/letsencrypt
+      - ./../data/certbot/www:/var/www/certbot
+      - ./letsencrypt:/var/log/letsencrypt
+      - ./duckdns.ini:/duckdns.ini
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    # restart: unless-stopped
+

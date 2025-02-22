@@ -84,10 +84,15 @@ services:
       file: portainer/docker-compose.yml
       service: portainer
   
-  nginx-proxy-manager:
+  nginx:
     extends:
-      file: nginx-proxy-manager/docker-compose.yml
-      service: nginx-proxy-manager
+      file: nginx/nginx/docker-compose.yml
+      service: nginx
+
+  certbot:
+    extends:
+      file: nginx/certbot/docker-compose.yml
+      service: certbot
  
 volumes:
   backup-data:

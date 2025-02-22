@@ -1,0 +1,18 @@
+version: '2.4'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    # entrypoint: "/bin/sh -c 'cat /etc/nginx/nginx.conf'"
+    # command: tail -f /dev/null
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./../data/certbot/letsencrypt:/etc/letsencrypt
+      - ./../data/certbot/www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - certbot
+    restart: unless-stopped
