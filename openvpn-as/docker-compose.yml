@@ -1,0 +1,13 @@
+version: '2.4'
+
+services:
+   openvpn-as:
+    image: openvpn/openvpn-as:2.14.0-b90cb316-Ubuntu22
+    cap_add:
+      - NET_ADMIN 
+    ports: 
+     - 943:943
+     - 444:443
+     - 1194:1194/udp
+    volumes: 
+      - ./openvpn:/openvpn

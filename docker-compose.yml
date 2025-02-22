@@ -88,7 +88,12 @@ services:
     extends:
       file: nginx-proxy-manager/docker-compose.yml
       service: nginx-proxy-manager
- 
+
+  openvpn-as:
+    extends:
+      file: openvpn-as/docker-compose.yml
+      service: openvpn-as
+
 volumes:
   backup-data:
   minio-data:

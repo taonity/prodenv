@@ -6,4 +6,5 @@ test/run-backup-restore/logging
 test/run-backup-restore/portainer
 test/run-backup-restore/docker-compose.yml
 cicd/docker-webhook/shared/envs
+openvpn-as/openvpn
 
