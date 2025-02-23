@@ -1,0 +1,13 @@
+---
+version: '2.4'
+
+services:
+  grafana-curl:
+    image: curlimages/curl:8.12.1
+    entrypoint: ["/bin/sh", "/init.sh"]
+    # command: tail -f /dev/null
+    user: "1000:1000"
+
+    volumes:
+      - ./../provisioning/dashboards:/home/curl_user/dashboards
+      - ./init.sh:/init.sh

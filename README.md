@@ -21,3 +21,18 @@ This is a production environment for docker applications. It contains logging, d
 
 ### Usage
 All sensitive information is removed for security purposes, this repo is more for review.
+
+### Notes
+
+#### Docker log-retention
+Configure automatic docker log-retention 
+https://docs.docker.com/engine/logging/drivers/json-file/
+```
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+```

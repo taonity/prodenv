@@ -1,7 +1,7 @@
 ---
 server:
   http_listen_port: 3100
-#  log_level: debug
+  # log_level: debug
 
 schema_config:
   configs:
@@ -12,6 +12,14 @@ schema_config:
       index:
         prefix: index_
         period: 24h
+    - from: "2025-02-24" # <---- A date in the future
+      index:
+        period: 24h
+        prefix: index_tsdb_
+      object_store: s3
+      schema: v11
+      store: tsdb
+
 common:
   path_prefix: /loki
   replication_factor: 1
@@ -32,6 +40,7 @@ ruler:
       bucketnames: loki-ruler
 
 ingester:
+  # todo
   chunk_idle_period: 1m
 
 # table_manager:
@@ -40,6 +49,7 @@ ingester:
 
 compactor:
   retention_enabled: true
+    # todo
   retention_delete_delay: 1m
   delete_request_cancel_period: 1m
 

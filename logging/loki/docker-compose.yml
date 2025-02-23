@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   loki:
-    image: grafana/loki:2.7.1
+    image: grafana/loki:2.8.11
     volumes:
       - ./configs:/etc/loki
     command: "-config.file=/etc/loki/config.yaml -config.expand-env=true"

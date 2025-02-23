@@ -9,3 +9,4 @@ cicd/docker-webhook/shared/envs
 nginx/certbot/duckdns.ini
 nginx/data
 nginx/certbot/letsencrypt
+logging/grafana/provisioning/dashboards/dashboard-1860.json

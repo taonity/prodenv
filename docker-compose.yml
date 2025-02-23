@@ -49,6 +49,11 @@ services:
       node-exporter:
         condition: service_started
 
+  grafana-curl:
+    extends:
+      file: logging/grafana/curl/docker-compose.yml
+      service: grafana-curl
+
   grafana:
     extends:
       file: logging/grafana/docker-compose.yml
@@ -60,6 +65,8 @@ services:
         condition: service_started
       prometheus:
         condition: service_started
+      grafana-curl:
+        condition: service_completed_successfully
         
   make-backup:
     extends:
