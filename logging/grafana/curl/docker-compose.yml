@@ -3,7 +3,7 @@ version: '2.4'
 
 services:
   grafana-curl:
-    image: curlimages/curl:8.12.1
+    image: curlimages/curl:8.15.0
     entrypoint: ["/bin/sh", "/init.sh"]
     # command: tail -f /dev/null
     user: "1000:1000"

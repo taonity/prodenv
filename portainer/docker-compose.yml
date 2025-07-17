@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   portainer:
-    image: portainer/portainer-ce:2.19.0
+    image: portainer/portainer-ce:2.31.3
     ports:
       - 127.0.0.1:9003:9000
     volumes:

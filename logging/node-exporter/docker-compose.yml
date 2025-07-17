@@ -2,7 +2,7 @@ version: '2.4'
 
 services:
   node-exporter:
-    image: prom/node-exporter:v1.6.1
+    image: prom/node-exporter:v1.9.1
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
