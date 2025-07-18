@@ -2,10 +2,10 @@ version: '2.4'
 
 services:
   certbot:
-    image: infinityofspace/certbot_dns_duckdns
+    image: infinityofspace/certbot_dns_duckdns:v1.6
     # entrypoint: "/bin/sh -c 'ls /etc/letsencrypt/live'"
     volumes:
-      # - ./../data/certbot/letsencrypt:/etc/letsencrypt
+      - ./../data/certbot/letsencrypt:/etc/letsencrypt
       - ./../data/certbot/www:/var/www/certbot
       - ./letsencrypt:/var/log/letsencrypt
       - ./duckdns.ini:/duckdns.ini

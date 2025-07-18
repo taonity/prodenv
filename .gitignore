@@ -7,6 +7,7 @@ test/run-backup-restore/portainer
 test/run-backup-restore/docker-compose.yml
 cicd/docker-webhook/shared/envs
 nginx/certbot/duckdns.ini
+nginx/certbot/.env
 nginx/data
 nginx/certbot/letsencrypt
 logging/grafana/provisioning/dashboards/dashboard-1860.json

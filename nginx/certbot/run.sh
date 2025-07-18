@@ -1,3 +1,4 @@
+# TODO: change from run to up, use .env
 docker compose run certbot \
    certonly \
      --non-interactive \

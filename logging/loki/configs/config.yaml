@@ -40,8 +40,7 @@ ruler:
       bucketnames: loki-ruler
 
 ingester:
-  # todo
-  chunk_idle_period: 1m
+  chunk_idle_period: 30m
 
 # table_manager:
 #   retention_deletes_enabled: true
@@ -49,10 +48,19 @@ ingester:
 
 compactor:
   retention_enabled: true
-    # todo
-  retention_delete_delay: 1m
-  delete_request_cancel_period: 1m
+  retention_delete_delay: 2h
+  delete_request_cancel_period: 24m
 
 limits_config:
-  retention_period: 48h
+  retention_period: 30d
+  split_queries_by_interval: 24h
 
+
+frontend:
+  max_outstanding_per_tenant: 4096
+
+querier:
+  max_concurrent: 4096
+
+query_scheduler:
+  max_outstanding_requests_per_tenant: 4096
