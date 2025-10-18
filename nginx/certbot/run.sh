@@ -1,5 +1,5 @@
-# TODO: change from run to up, use .env
-docker compose run certbot \
+# Run: nginx/certbot/run.sh <email> <dns adderss>
+docker compose exec certbot certbot \
    certonly \
      --non-interactive \
      --agree-tos \

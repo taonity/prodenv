@@ -6,11 +6,15 @@ services:
     extends:
       file: cicd/docker-webhook/docker-compose.yml
       service: docker-webhook
+    networks:
+     - nginx
 
   loki:
     extends:
       file: logging/loki/docker-compose.yml
       service: loki
+    networks:
+     - logging
     depends_on:
       minio:
         condition: service_healthy
@@ -19,6 +23,8 @@ services:
     extends:
       file: logging/promtail/docker-compose.yml
       service: promtail
+    networks:
+     - logging
     depends_on:
       loki:
         condition: service_healthy
@@ -27,11 +33,15 @@ services:
     extends:
       file: logging/minio/docker-compose.yml
       service: minio
+    networks:
+     - logging
 
   mc:
     extends:
       file: logging/mc/docker-compose.yml
       service: mc
+    networks:
+     - logging
     depends_on:
       minio:
         condition: service_healthy
@@ -40,11 +50,15 @@ services:
     extends:
       file: logging/node-exporter/docker-compose.yml
       service: node-exporter
+    networks:
+     - logging
   
   prometheus:
     extends:
       file: logging/prometheus/docker-compose.yml
       service: prometheus
+    networks:
+     - logging
     depends_on:
       node-exporter:
         condition: service_started
@@ -58,6 +72,9 @@ services:
     extends:
       file: logging/grafana/docker-compose.yml
       service: grafana
+    networks:
+     - logging
+     - nginx
     depends_on:
       loki:
         condition: service_healthy
@@ -90,12 +107,16 @@ services:
     extends:
       file: portainer/docker-compose.yml
       service: portainer
-  
+    networks:
+     - nginx
+     
   nginx:
     extends:
       file: nginx/nginx/docker-compose.yml
       service: nginx
-
+    networks:
+     - nginx
+     - prodenv-shared-internal
   certbot:
     extends:
       file: nginx/certbot/docker-compose.yml
@@ -109,3 +130,9 @@ volumes:
   portainer-data:
   nginx-proxy-manager-data:
   prometheus_data:
+
+networks:
+  nginx:
+  logging:
+  prodenv-shared-internal:
+    external: true
