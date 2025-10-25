@@ -59,6 +59,7 @@ services:
       service: prometheus
     networks:
      - logging
+     - artist-insight-shared
     depends_on:
       node-exporter:
         condition: service_started
@@ -135,4 +136,6 @@ networks:
   nginx:
   logging:
   prodenv-shared-internal:
+    external: true
+  artist-insight-shared:
     external: true
