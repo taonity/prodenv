@@ -1,0 +1,611 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 20,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status_200_count"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status_other_count"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "status_200_count"
+          }
+        ]
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} count",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, uri, join_key) (label_join(rate(http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}[1m]), \"join_key\", \"_\", \"method\", \"uri\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} rate_per_minute",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_sum{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} seconds_sum",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max by (method, uri, join_key) (label_join(http_server_requests_seconds_max{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} max_seconds",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status=\"200\",uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} status_200_count",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status!=\"200\",uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{method}} {{uri}} status_other_count",
+          "refId": "F"
+        }
+      ],
+      "title": "Endpoint Metrics",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "join_key",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "Time 6": true,
+              "join_key": true,
+              "method 1": false,
+              "method 2": true,
+              "method 3": true,
+              "method 4": true,
+              "method 5": true,
+              "method 6": true,
+              "uri 1": false,
+              "uri 2": true,
+              "uri 3": true,
+              "uri 4": true,
+              "uri 5": true,
+              "uri 6": true
+            },
+            "indexByName": {
+              "Time 1": 3,
+              "Time 2": 5,
+              "Time 3": 9,
+              "Time 4": 13,
+              "Time 5": 17,
+              "Time 6": 21,
+              "Value #A": 4,
+              "Value #B": 8,
+              "Value #C": 12,
+              "Value #D": 16,
+              "Value #E": 20,
+              "Value #F": 24,
+              "join_key": 2,
+              "method 1": 0,
+              "method 2": 6,
+              "method 3": 10,
+              "method 4": 14,
+              "method 5": 18,
+              "method 6": 22,
+              "uri 1": 1,
+              "uri 2": 7,
+              "uri 3": 11,
+              "uri 4": 15,
+              "uri 5": 19,
+              "uri 6": 23
+            },
+            "renameByName": {
+              "Value #A": "count",
+              "Value #B": "rate_per_minute",
+              "Value #C": "seconds_sum",
+              "Value #D": "max_seconds",
+              "Value #E": "status_200_count",
+              "Value #F": "status_other_count"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "app_users_count",
+          "instant": false,
+          "legendFormat": "Users",
+          "refId": "A"
+        },
+        {
+          "expr": "app_global_gpt_usages_count",
+          "instant": false,
+          "legendFormat": "Global GPT usages",
+          "refId": "B"
+        },
+        {
+          "expr": "app_artists_count",
+          "instant": false,
+          "legendFormat": "Artists",
+          "refId": "C"
+        },
+        {
+          "expr": "app_genres_count",
+          "instant": false,
+          "legendFormat": "Genres",
+          "refId": "D"
+        }
+      ],
+      "title": "App Stats",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 14
+      },
+      "id": 2,
+      "options": {
+        "backgroundColor": "transparent",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showGraph": false,
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "sum(spring_security_authentications_seconds_count)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Authentication Count",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 3,
+        "y": 14
+      },
+      "id": 3,
+      "options": {
+        "backgroundColor": "transparent",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showGraph": true,
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "rate(spring_security_authentications_seconds_count[1m]) * 60",
+          "refId": "B"
+        }
+      ],
+      "title": "Authentication Rate (/min)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 6,
+        "y": 14
+      },
+      "id": 4,
+      "options": {
+        "backgroundColor": "transparent",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showGraph": false,
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "sum(spring_security_authentications_seconds_sum)",
+          "instant": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Authentication Sum",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 9,
+        "y": 14
+      },
+      "id": 5,
+      "options": {
+        "backgroundColor": "transparent",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showGraph": true,
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "max(spring_security_authentications_seconds_max)",
+          "refId": "A"
+        }
+      ],
+      "title": "Authentication Max",
+      "type": "stat"
+    }
+  ],
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Artist Insight",
+  "uid": "artist-insight",
+  "version": 2,
+  "weekStart": ""
+}
