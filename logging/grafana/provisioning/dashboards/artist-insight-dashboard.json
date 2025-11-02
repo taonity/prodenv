@@ -24,10 +24,346 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 20,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "app_users_count",
+          "instant": false,
+          "legendFormat": "Users",
+          "refId": "A"
+        },
+        {
+          "expr": "app_global_gpt_usages_count",
+          "instant": false,
+          "legendFormat": "Global GPT usages",
+          "refId": "B"
+        },
+        {
+          "expr": "app_artists_count",
+          "instant": false,
+          "legendFormat": "Artists",
+          "refId": "C"
+        },
+        {
+          "expr": "app_genres_count",
+          "instant": false,
+          "legendFormat": "Genres",
+          "refId": "D"
+        }
+      ],
+      "title": "App Stats",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "sum(spring_security_authentications_seconds_count{error=\"none\"})",
+          "legendFormat": "success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(spring_security_authentications_seconds_count{error!=\"none\"})",
+          "legendFormat": "fail",
+          "refId": "B"
+        }
+      ],
+      "title": "Auth Count",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "sum(rate(spring_security_authentications_seconds_count{error=\"none\"}[1m]))",
+          "legendFormat": "success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(spring_security_authentications_seconds_count{error!=\"none\"}[1m]))",
+          "legendFormat": "fail",
+          "refId": "B"
+        }
+      ],
+      "title": "Auth Rate (/s)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 0
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "sum(spring_security_authentications_seconds_sum{error=\"none\"})",
+          "legendFormat": "success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(spring_security_authentications_seconds_sum{error!=\"none\"})",
+          "legendFormat": "fail",
+          "refId": "B"
+        }
+      ],
+      "title": "Auth Duration Sum (s)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": false,
+        "textMode": "value"
+      },
+      "pluginVersion": "9.3.6",
+      "targets": [
+        {
+          "expr": "max(spring_security_authentications_seconds_max{error=\"none\"})",
+          "legendFormat": "success",
+          "refId": "A"
+        },
+        {
+          "expr": "max(spring_security_authentications_seconds_max{error!=\"none\"})",
+          "legendFormat": "fail",
+          "refId": "B"
+        }
+      ],
+      "title": "Auth Duration Max (s)",
+      "transparent": true,
+      "type": "stat"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -93,14 +429,15 @@
         ]
       },
       "gridPos": {
-        "h": 8,
+        "h": 16,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 4
       },
       "id": 1,
       "options": {
         "footer": {
+          "enablePagination": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -123,7 +460,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} count",
@@ -135,7 +472,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (method, uri, join_key) (label_join(rate(http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}[1m]), \"join_key\", \"_\", \"method\", \"uri\"))",
+          "expr": "sum by (method, uri, join_key) (label_join(rate(http_server_requests_seconds_count{uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}[1m]), \"join_key\", \"_\", \"method\", \"uri\"))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} rate_per_minute",
@@ -147,7 +484,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_sum{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_sum{uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} seconds_sum",
@@ -159,7 +496,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "max by (method, uri, join_key) (label_join(http_server_requests_seconds_max{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
+          "expr": "max by (method, uri, join_key) (label_join(http_server_requests_seconds_max{uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\"))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} max_seconds",
@@ -171,7 +508,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status=\"200\",uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status=\"200\",uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} status_200_count",
@@ -183,7 +520,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status!=\"200\",uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
+          "expr": "sum by (method, uri, join_key) (label_join(http_server_requests_seconds_count{status!=\"200\",uri=~\"/actuator/health|/\\\\*\\\\*|UNKNOWN|/callback/kofi|/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"}, \"join_key\", \"_\", \"method\", \"uri\")) or\r\nsum by (method, uri, join_key) (\r\n  label_join(\r\n    http_server_requests_seconds_count{uri=~\"/actuator/prometheus|/user|/followings|/followings/enriched|/actuator/health/\\\\*\\\\*\"} * 0,\r\n    \"join_key\", \"_\", \"method\", \"uri\"\r\n  )\r\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{uri}} status_other_count",
@@ -261,335 +598,8 @@
           }
         }
       ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "none",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "textMode": "value_and_name"
-      },
-      "pluginVersion": "9.3.6",
-      "targets": [
-        {
-          "expr": "app_users_count",
-          "instant": false,
-          "legendFormat": "Users",
-          "refId": "A"
-        },
-        {
-          "expr": "app_global_gpt_usages_count",
-          "instant": false,
-          "legendFormat": "Global GPT usages",
-          "refId": "B"
-        },
-        {
-          "expr": "app_artists_count",
-          "instant": false,
-          "legendFormat": "Artists",
-          "refId": "C"
-        },
-        {
-          "expr": "app_genres_count",
-          "instant": false,
-          "legendFormat": "Genres",
-          "refId": "D"
-        }
-      ],
-      "title": "App Stats",
       "transparent": true,
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 0,
-        "y": 14
-      },
-      "id": 2,
-      "options": {
-        "backgroundColor": "transparent",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showGraph": false,
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "textMode": "value"
-      },
-      "pluginVersion": "9.3.6",
-      "targets": [
-        {
-          "expr": "sum(spring_security_authentications_seconds_count)",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Authentication Count",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 2,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 3,
-        "y": 14
-      },
-      "id": 3,
-      "options": {
-        "backgroundColor": "transparent",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showGraph": true,
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "textMode": "value"
-      },
-      "pluginVersion": "9.3.6",
-      "targets": [
-        {
-          "expr": "rate(spring_security_authentications_seconds_count[1m]) * 60",
-          "refId": "B"
-        }
-      ],
-      "title": "Authentication Rate (/min)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 2,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 6,
-        "y": 14
-      },
-      "id": 4,
-      "options": {
-        "backgroundColor": "transparent",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showGraph": false,
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "textMode": "value"
-      },
-      "pluginVersion": "9.3.6",
-      "targets": [
-        {
-          "expr": "sum(spring_security_authentications_seconds_sum)",
-          "instant": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Authentication Sum",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 2,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 9,
-        "y": 14
-      },
-      "id": 5,
-      "options": {
-        "backgroundColor": "transparent",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showGraph": true,
-        "showThresholdLabels": false,
-        "showThresholdMarkers": false,
-        "textMode": "value"
-      },
-      "pluginVersion": "9.3.6",
-      "targets": [
-        {
-          "expr": "max(spring_security_authentications_seconds_max)",
-          "refId": "A"
-        }
-      ],
-      "title": "Authentication Max",
-      "type": "stat"
+      "type": "table"
     }
   ],
   "schemaVersion": 37,
@@ -605,7 +615,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Artist Insight",
-  "uid": "artist-insight",
-  "version": 2,
+  "uid": "artist-insightefef",
+  "version": 1,
   "weekStart": ""
 }
