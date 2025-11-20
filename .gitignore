@@ -5,7 +5,7 @@ test/run-backup-restore/cicd
 test/run-backup-restore/logging
 test/run-backup-restore/portainer
 test/run-backup-restore/docker-compose.yml
-cicd/docker-webhook/shared/envs
+cicd/docker-webhook/shared/envs/**/.env
 nginx/certbot/duckdns.ini
 nginx/certbot/.env
 nginx/data

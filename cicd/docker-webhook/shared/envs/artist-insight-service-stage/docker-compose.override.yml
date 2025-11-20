@@ -1,0 +1,8 @@
+services:
+  db:
+    ports:
+      - 5435:5432
+
+  frontend:
+    ports:
+      - 127.0.0.1:3003:3000
