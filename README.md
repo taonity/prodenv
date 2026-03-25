@@ -36,3 +36,8 @@ https://docs.docker.com/engine/logging/drivers/json-file/
   }
 }
 ```
+
+#### Nginx certs reniew
+0 */6 * * * docker compose -f /path/to/docker-compose.yml up certbot && docker compose -f /path/to/docker-compose.yml exec nginx nginx -s reload
+
+todo: think about module for nginx for cert generation
