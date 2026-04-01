@@ -11,10 +11,10 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
-  - job_name: "artist-insight-service"
+  - job_name: "artist-insight-service-prod"
     metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: ["app:9016"]
+      - targets: ["artist-insight-service-prod-app:8080"]
 
 remote_write:
   - url: '<Your Prometheus remote_write endpoint>'
