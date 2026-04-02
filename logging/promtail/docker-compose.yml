@@ -1,5 +1,3 @@
-version: '2.4'
-
 services:
   promtail:
     image: grafana/promtail:2.7.1
