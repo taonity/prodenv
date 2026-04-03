@@ -1,0 +1,22 @@
+services:
+
+  docker-webhook:
+    ports: 
+     - 127.0.0.1:9000:9000
+
+  minio:
+    ports:
+      - 127.0.0.1:9002:9002
+
+  grafana:
+    ports:
+      - 127.0.0.1:3000:3000
+
+  portainer:
+    ports:
+      - 127.0.0.1:9003:9000
+     
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"

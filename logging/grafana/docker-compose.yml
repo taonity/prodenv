@@ -1,10 +1,12 @@
 services:
   grafana:
-    image: grafana/grafana:9.3.6
+    image: grafana/grafana:11.6.0
     env_file:
       - ../.env
-    ports:
-      - 127.0.0.1:3000:3000
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app 1.0.37
+      - GF_PLUGINS_PREINSTALL_DISABLED=true
+      - GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false
     volumes:
       - ./provisioning:/etc/grafana/provisioning
     healthcheck:
