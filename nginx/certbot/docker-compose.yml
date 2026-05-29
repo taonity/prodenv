@@ -1,9 +1,9 @@
 services:
   certbot:
-    image: infinityofspace/certbot_dns_duckdns:v1.6
+    image: certbot/dns-cloudflare:v5.6.0
     volumes:
       - ./../data/certbot/letsencrypt:/etc/letsencrypt
       - ./../data/certbot/www:/var/www/certbot
       - ./letsencrypt:/var/log/letsencrypt
-      - ./duckdns.ini:/duckdns.ini
+      - ./cloudflare.ini:/cloudflare.ini:ro
     entrypoint: "/bin/sh -c 'certbot renew'"

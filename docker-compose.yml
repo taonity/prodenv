@@ -120,6 +120,11 @@ services:
     extends:
       file: nginx/certbot/docker-compose.yml
       service: certbot
+
+  ddns:
+    extends:
+      file: ddns/docker-compose.yml
+      service: ddns
  
 volumes:
   backup-data:
