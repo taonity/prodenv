@@ -1,0 +1,11 @@
+services:
+  logcli:
+    image: grafana/logcli:3.7.2
+    env_file:
+      - ../.env
+    environment:
+      - LOKI_ADDR=http://loki:3100
+      - LOKI_USERNAME=admin
+      - LOKI_PASSWORD=admin
+      - LOKI_ORG_ID=tenant1
+

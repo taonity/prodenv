@@ -13,3 +13,4 @@ nginx/certbot/letsencrypt
 logging/grafana/provisioning/dashboards/dashboard-1860.json
 ddns/.env
 nginx/certbot/cloudflare.ini
+exported_logs.txt

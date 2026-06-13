@@ -83,7 +83,17 @@ services:
         condition: service_started
       grafana-curl:
         condition: service_completed_successfully
-        
+
+  logcli:
+    extends:
+      file: logging/logcli/docker-compose.yml
+      service: logcli
+    networks:
+     - logging
+    depends_on:
+      loki:
+        condition: service_healthy
+
   make-backup:
     extends:
       file: backup/make-backup/docker-compose.yml

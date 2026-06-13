@@ -4,6 +4,8 @@ services:
     env_file:
       - ../.env
     environment:
+      - GF_SERVER_ROOT_URL=https://grafana.taonity.org
+      - GF_SERVER_DOMAIN=grafana.taonity.org
       - GF_INSTALL_PLUGINS=grafana-lokiexplore-app 1.0.37
       - GF_PLUGINS_PREINSTALL_DISABLED=true
       - GF_PLUGINS_PLUGIN_ADMIN_ENABLED=false
