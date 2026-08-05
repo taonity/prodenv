@@ -135,6 +135,13 @@ services:
     extends:
       file: ddns/docker-compose.yml
       service: ddns
+  
+  ntfy:
+    extends:
+      file: ntfy/docker-compose.yml
+      service: ntfy
+    networks:
+     - nginx
  
 volumes:
   backup-data:
