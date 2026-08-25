@@ -3,6 +3,7 @@ services:
 
   make-backup:
     image: offen/docker-volume-backup:v2.25.1
+    restart: unless-stopped
     env_file: 
      - ./backup.env
     volumes:

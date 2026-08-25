@@ -1,6 +1,7 @@
 services:
   restore-backup:
     image: generaltao725/command-runner:0.1.0
+    restart: unless-stopped
     environment:
       - COMMAND_RUNNER_GROUP=prodenv
     volumes:

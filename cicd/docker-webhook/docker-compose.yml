@@ -1,6 +1,7 @@
 services:
    docker-webhook:
     image: generaltao725/docker-webhook:0.9.0
+    restart: unless-stopped
     volumes: 
       - ./shared:/etc/webhook/shared
       - //etc/webhook/cache:/etc/webhook/cache

@@ -1,8 +1,19 @@
 services:
   db:
+    restart: unless-stopped
     ports:
       - 5438:5432
 
+  flyway:
+    restart: "no"
+
+  backend:
+    restart: unless-stopped
+
+  chat-collector:
+    restart: unless-stopped
+
   frontend:
+    restart: unless-stopped
     ports:
       - 127.0.0.1:3006:3000

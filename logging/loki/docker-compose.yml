@@ -1,6 +1,7 @@
 services:
   loki:
     image: grafana/loki:3.6.9
+    restart: unless-stopped
     volumes:
       - ./configs:/etc/loki
     command: "-config.file=/etc/loki/config.yaml -config.expand-env=true"

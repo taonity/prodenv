@@ -1,6 +1,7 @@
 services:
   grafana:
     image: grafana/grafana:11.6.0
+    restart: unless-stopped
     env_file:
       - ../.env
     environment:

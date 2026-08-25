@@ -1,6 +1,7 @@
 services:
   node-exporter:
     image: prom/node-exporter:v1.6.1
+    restart: unless-stopped
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro

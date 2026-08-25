@@ -1,6 +1,7 @@
 services:
   grafana-curl:
     image: curlimages/curl:8.12.1
+    restart: "no"
     entrypoint: ["/bin/sh", "/init.sh"]
     # command: tail -f /dev/null
     user: "1000:1000"

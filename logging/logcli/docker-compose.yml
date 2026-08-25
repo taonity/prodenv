@@ -1,6 +1,7 @@
 services:
   logcli:
     image: grafana/logcli:3.7.2
+    restart: "no"
     env_file:
       - ../.env
     environment:
