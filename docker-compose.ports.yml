@@ -12,6 +12,10 @@ services:
     ports:
       - 3000:3000
 
+  grafana-mcp:
+    ports:
+      - 127.0.0.1:18000:8000
+
   portainer:
     ports:
       - 127.0.0.1:9003:9000

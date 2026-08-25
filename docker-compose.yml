@@ -83,6 +83,27 @@ services:
         condition: service_started
       grafana-curl:
         condition: service_completed_successfully
+  
+  grafana-mcp-bootstrap:
+    extends:
+      file: logging/grafana-mcp/docker-compose.yml
+      service: grafana-mcp-bootstrap
+    networks:
+      - logging
+    depends_on:
+      grafana:
+        condition: service_started
+
+  grafana-mcp:
+    extends:
+      file: logging/grafana-mcp/docker-compose.yml
+      service: grafana-mcp
+    networks:
+      - logging
+      - artist-insight-shared
+    depends_on:
+      grafana-mcp-bootstrap:
+        condition: service_completed_successfully
 
   logcli:
     extends:
