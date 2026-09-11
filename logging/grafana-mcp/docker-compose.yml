@@ -12,7 +12,7 @@ services:
     restart: "no"
 
   grafana-mcp:
-    image: grafana/mcp-grafana:1.0.0
+    image: grafana/mcp-grafana:1.4.1
     restart: unless-stopped
     command:
       - --transport
