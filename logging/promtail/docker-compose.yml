@@ -1,6 +1,6 @@
 services:
   promtail:
-    image: grafana/promtail:2.7.1
+    image: grafana/promtail:2.9.17
     restart: unless-stopped
     volumes:
       - ./config.yaml:/etc/promtail/config.yaml:ro
