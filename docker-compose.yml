@@ -84,6 +84,14 @@ services:
       grafana-curl:
         condition: service_completed_successfully
   
+  # grafana-curl:
+  #   extends:
+  #     file: logging/grafana/curl/docker-compose.yml
+  #     service: grafana-curl
+  #   depends_on:
+  #     grafana:
+  #       condition: service_started
+
   grafana-mcp-bootstrap:
     extends:
       file: logging/grafana-mcp/docker-compose.yml

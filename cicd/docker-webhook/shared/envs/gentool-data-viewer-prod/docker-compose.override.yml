@@ -1,0 +1,16 @@
+services:
+  db:
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:5441:5432
+
+  flyway:
+    restart: "no"
+
+  backend:
+    restart: unless-stopped
+
+  frontend:
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:3009:3000
