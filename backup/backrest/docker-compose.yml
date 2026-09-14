@@ -18,6 +18,12 @@ services:
       - backrest-tmp:/tmp
       - backup-staging:/userdata:ro
       - backup-restore:/restore
+      - ./backup/scripts:/hooks:ro
+    secrets:
+      - source: backrest-repository-password
+        target: backrest_repository_password
+      - source: backrest-aws-credentials
+        target: backrest_aws_credentials
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -26,3 +32,27 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  backrest-bootstrap:
+    image: python:3.13.7-alpine3.22
+    restart: "no"
+    command: ["python", "/bootstrap/bootstrap.py"]
+    environment:
+      BACKREST_URL: http://backrest:9898
+      BACKREST_DESIRED_CONFIG: /bootstrap/desired.json
+      BACKREST_INSTANCE: ${BACKREST_INSTANCE:-prodenv}
+      BACKREST_REPOSITORY_ID: ${BACKREST_REPOSITORY_ID:-offsite}
+      BACKREST_REPOSITORY_URI: ${BACKREST_REPOSITORY_URI:?Set BACKREST_REPOSITORY_URI in .env}
+      BACKREST_ADMIN_USERNAME: ${BACKREST_ADMIN_USERNAME:-admin}
+      BACKREST_ADMIN_PASSWORD_FILE: /run/secrets/backrest_admin_password
+    volumes:
+      - ./backup/backrest/bootstrap.py:/bootstrap/bootstrap.py:ro
+      - ./backup/backrest/desired.json:/bootstrap/desired.json:ro
+    secrets:
+      - source: backrest-admin-password
+        target: backrest_admin_password
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backrest:
+        condition: service_healthy

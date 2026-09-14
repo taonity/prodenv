@@ -117,8 +117,13 @@ services:
     extends:
       file: backup/backrest/docker-compose.yml
       service: backrest
-    volumes:
-      - ./backup/scripts:/hooks:ro
+    networks:
+      - nginx
+
+  backrest-bootstrap:
+    extends:
+      file: backup/backrest/docker-compose.yml
+      service: backrest-bootstrap
     networks:
       - nginx
 
@@ -174,3 +179,11 @@ networks:
     external: true
   artist-insight-shared:
     external: true
+
+secrets:
+  backrest-admin-password:
+    file: ./backup/backrest/secrets/admin_password
+  backrest-repository-password:
+    file: ./backup/backrest/secrets/repository_password
+  backrest-aws-credentials:
+    file: ./backup/backrest/secrets/aws_credentials

@@ -1,6 +1,11 @@
 cicd/.env
 logging/.env
 .env
+backup/backrest/secrets/admin_password
+backup/backrest/secrets/repository_password
+backup/backrest/secrets/aws_credentials
+__pycache__/
+*.py[cod]
 test/run-backup-restore/backup
 test/run-backup-restore/cicd
 test/run-backup-restore/logging

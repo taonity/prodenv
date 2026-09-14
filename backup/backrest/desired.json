@@ -1,0 +1,59 @@
+{
+  "repository": {
+    "autoUnlock": true,
+    "prunePolicy": {
+      "schedule": {
+        "cron": "0 3 1 * *",
+        "clock": "CLOCK_LOCAL"
+      },
+      "maxUnusedPercent": 10
+    },
+    "checkPolicy": {
+      "schedule": {
+        "maxFrequencyDays": 7,
+        "clock": "CLOCK_LAST_RUN_TIME"
+      },
+      "readDataSubsetPercent": 10
+    }
+  },
+  "plans": [
+    {
+      "id": "all-project-exports",
+      "paths": [
+        "/userdata"
+      ],
+      "schedule": {
+        "cron": "30 1 * * *",
+        "clock": "CLOCK_LOCAL"
+      },
+      "retention": {
+        "policyTimeBucketed": {
+          "daily": 14,
+          "weekly": 8,
+          "monthly": 12,
+          "yearly": 3
+        }
+      },
+      "hooks": [
+        {
+          "conditions": [
+            "CONDITION_SNAPSHOT_START"
+          ],
+          "onError": "ON_ERROR_FATAL",
+          "actionCommand": {
+            "command": "sh /hooks/validate-staging.sh /userdata 26"
+          }
+        },
+        {
+          "conditions": [
+            "CONDITION_SNAPSHOT_SUCCESS",
+            "CONDITION_ANY_ERROR"
+          ],
+          "actionCommand": {
+            "command": "sh /hooks/notify-ntfy.sh {{ .ShellEscape .Task }} {{ .ShellEscape (.Summary) }}"
+          }
+        }
+      ]
+    }
+  ]
+}

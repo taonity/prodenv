@@ -1,1 +1,42 @@
-["{\"transientOutputs\":false,\"transientCellMetadata\":{\"runme.dev/name\":true,\"runme.dev/nameGenerated\":true,\"runme.dev/id\":true,\"runme.dev/textRange\":true},\"transientDocumentMetadata\":{},\"cellContentMetadata\":{}}","{\"cells\":[{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"# Backups\\n\\nBackrest schedules and tracks encrypted restic snapshots. Application databases\\nmust first create database-native exports in the shared staging volume. Backing\\nup a live database volume is intentionally unsupported.\\n\\n## Storage model\\n\\n- `prodenv-backup-staging`: completed database exports and valuable project files.\\n- `prodenv-backup-restore`: isolated target for restores from the Backrest UI.\\n- `backrest-*`: private Backrest configuration, cache, and operation history.\\n- Remote restic repository: the durable, encrypted, off-host backup.\\n\\nThe remote repository must be in another failure domain and preferably another\\nprovider account. The Backrest repository password and cloud recovery credentials\\nmust also be stored in a password manager; they cannot be recovered from restic.\\n\\n## First run\\n\\n1. Copy `.env.example` to `.env` and set the optional ntfy URL and token.\\n2. Start the service:\\n\\n   ```sh\\n   docker compose -f docker-compose.yml -f docker-compose.ports.yml up -d backrest\\n   ```\\n\\n3. Open `http://127.0.0.1:9898`. From another machine, use an SSH tunnel rather\\n   than publishing the port:\\n\\n   ```sh\\n   ssh -L 9898:127.0.0.1:9898 user@server\\n   ```\\n\\n4. Create the Backrest instance and enable authentication.\\n5. Add an S3-compatible repository, for example\\n   `s3:https://s3.example.com/bucket/prodenv`. Generate a unique repository\\n   password and add the provider credentials as repository environment values:\\n\\n   ```text\\n   AWS_ACCESS_KEY_ID=...\\n   AWS_SECRET_ACCESS_KEY=...\\n   AWS_DEFAULT_REGION=...\\n   ```\\n\\n6. Enable automatic repository initialization. Configure a repository check\\n   every 7 days that reads 10% of pack data, and prune monthly with 10% maximum\\n   unused space.\\n\\nFor each project, add one plan with these settings:\\n\\n- Path: `/userdata/<project>`\\n- Schedule: daily, after that project's database export\\n- Retention: 14 daily, 8 weekly, 12 monthly, and 3 yearly snapshots\\n- Start hook: `sh /hooks/validate-export.sh /userdata/<project> 26`\\n- Start hook error behavior: `ON_ERROR_FATAL`\\n\\nAdd this command as an error/success hook when ntfy notifications are wanted:\\n\\n```sh\\nsh /hooks/notify-ntfy.sh {{ .ShellEscape .Task }} {{ .ShellEscape (.Summary) }}\\n```\\n\\nUse `CONDITION_ANY_ERROR` for failures and `CONDITION_SNAPSHOT_SUCCESS` for the\\ndaily success signal. The optional notification credentials come from `.env`,\\nnot from the hook configuration.\\n\\n## Project export contract\\n\\nEach deployable project declares the staging volume as external and mounts it\\nonly into its export job:\\n\\n```yaml\\nservices:\\n  postgres-export:\\n    image: postgres:17\\n    restart: \\\"no\\\"\\n    environment:\\n      BACKUP_PROJECT: example-prod\\n      PGHOST: postgres\\n      PGUSER: postgres\\n      PGPASSWORD: ${POSTGRES_PASSWORD}\\n      PGDATABASE: app\\n    volumes:\\n      - /opt/prodenv/backup/scripts/export-postgres.sh:/usr/local/bin/export:ro\\n      - backup-staging:/backup-staging\\n    entrypoint: [\\\"sh\\\", \\\"/usr/local/bin/export\\\"]\\n\\nvolumes:\\n  backup-staging:\\n    external: true\\n    name: prodenv-backup-staging\\n```\\n\\nRun the exporter before the corresponding Backrest plan, for example:\\n\\n```sh\\ndocker compose run --rm postgres-export\\n```\\n\\nUse `export-mysql.sh` in a MySQL or MariaDB client image with `MYSQL_HOST`,\\n`MYSQL_USER`, `MYSQL_PWD`, and `MYSQL_DATABASE`. Schedule exports at least 30\\nminutes before Backrest and never run an exporter concurrently with its plan.\\nThe scripts publish a new export only after the database command and checksum\\nboth succeed. Backrest then rejects missing, stale, empty, or in-progress data.\\n\\nFor PostgreSQL systems requiring a recovery point objective shorter than one\\nday, configure pgBackRest and WAL archiving in that project's database stack.\\nKeep the logical export as the portable migration path; use pgBackRest for\\npoint-in-time disaster recovery.\\n\\n## Restore and migration\\n\\nRestore from Backrest into `/restore`, never directly over production data.\\nValidate checksums and import into a temporary database before cutover. A normal\\nserver migration is:\\n\\n1. Recreate infrastructure from Git on the new server.\\n2. Recreate Backrest using the separately stored repository password and cloud\\n   credentials, then connect to the existing restic repository.\\n3. Restore a snapshot to `/restore` and run `sha256sum -c checksums.sha256` in\\n   each restored export directory.\\n4. Import roles first, then the database dump, and run application checks.\\n5. Stop writes on the old server, take a final export, restore it, and switch DNS.\\n\\nUse PostgreSQL replication instead when the allowed migration downtime is less\\nthan the export and import duration.\\n\\n## Verification\\n\\n- Review Backrest failures and the ntfy success signal daily.\\n- Run the repository check weekly and prune monthly.\\n- Every quarter, create a canary record, back it up, restore it into\\n  `prodenv-backup-restore`, and verify the content without reading production.\\n- At least yearly, restore each database into an isolated server and run an\\n  application smoke test. A successful snapshot is not proof of recoverability.\\n\\nLoki already enforces its own 30-day retention. Operational logs are not copied\\ninto long-lived restic snapshots by default because doing so silently extends\\ntheir retention. Export only specifically classified audit or business records\\nunder a separate project plan with an explicit retention requirement.\",\"internalMetadata\":{\"internalId\":\"d78f816d\"}}],\"metadata\":{\"runme.dev/cacheId\":\"01M1KPKF2S8K0EZHAP2FPCS4CV\",\"runme.dev/id\":\"01M1KPKF2S8K0EZHAP2FPCS4CV\",\"runme.dev/finalLineBreaks\":\"0\"}}"]
+# Backups
+
+Backrest manages encrypted off-site restic snapshots. Configuration is applied
+automatically by `backrest-bootstrap` whenever the stack starts.
+
+## Setup
+
+1. Create `.env` from `.env.example` and set the repository URI.
+2. Create the untracked files described in
+   [backrest/secrets/README.md](backrest/secrets/README.md).
+3. Store recovery credentials separately in a password manager.
+4. Start the normal Compose stack and confirm `backrest-bootstrap` succeeds.
+
+The UI is available only on `127.0.0.1:9898`. Use an SSH tunnel for remote
+access.
+
+## Project exports
+
+Application databases must create database-native exports in the external
+`prodenv-backup-staging` volume. Backing up a live database volume is
+intentionally unsupported.
+
+Use [scripts/export-postgres.sh](scripts/export-postgres.sh) for PostgreSQL or
+[scripts/export-mysql.sh](scripts/export-mysql.sh) for MySQL/MariaDB. Mount the
+staging volume in each project's export job and schedule exports before the
+snapshot time defined in
+[backrest/desired.json](backrest/desired.json). Backrest rejects the entire
+snapshot when any project export is missing, empty, in progress, or older than
+26 hours.
+
+For PostgreSQL systems requiring recovery points more frequent than daily,
+configure pgBackRest and WAL archiving in the application's database stack.
+Keep the logical export as the portable server-migration path.
+
+## Restore verification
+
+Restore into `/restore`, never over production data. Verify the included
+checksums, import into an isolated database, and run an application smoke test.
+Test restores quarterly and perform a complete recovery drill yearly.
+
+Loki already enforces 30-day retention. Operational logs are intentionally not
+included in long-lived snapshots unless a separate audit requirement exists.
