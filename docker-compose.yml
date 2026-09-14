@@ -34,16 +34,6 @@ services:
     networks:
      - logging
 
-  mc:
-    extends:
-      file: logging/mc/docker-compose.yml
-      service: mc
-    networks:
-     - logging
-    depends_on:
-      minio:
-        condition: service_healthy
-  
   node-exporter:
     extends:
       file: logging/node-exporter/docker-compose.yml
@@ -123,23 +113,14 @@ services:
       loki:
         condition: service_healthy
 
-  make-backup:
+  backrest:
     extends:
-      file: backup/make-backup/docker-compose.yml
-      service: make-backup
-    depends_on:
-      minio:
-        condition: service_healthy
-      mc:
-        condition: service_started
-
-  restore-backup:
-    extends:
-      file: backup/restore-backup/docker-compose.yml
-      service: restore-backup
-    depends_on:
-      mc:
-        condition: service_started
+      file: backup/backrest/docker-compose.yml
+      service: backrest
+    volumes:
+      - ./backup/scripts:/hooks:ro
+    networks:
+      - nginx
 
   portainer:
     extends:
@@ -173,10 +154,15 @@ services:
      - nginx
  
 volumes:
-  backup-data:
+  backrest-data:
+  backrest-config:
+  backrest-cache:
+  backrest-tmp:
+  backup-staging:
+    name: prodenv-backup-staging
+  backup-restore:
+    name: prodenv-backup-restore
   minio-data:
-  minio-mirror-data:
-  mc-data:
   portainer-data:
   nginx-proxy-manager-data:
   prometheus_data:
