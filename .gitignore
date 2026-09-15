@@ -1,6 +1,7 @@
 cicd/.env
 logging/.env
 .env
+backup/backrest/.env
 backup/backrest/secrets/admin_password
 backup/backrest/secrets/repository_password
 backup/backrest/secrets/aws_credentials

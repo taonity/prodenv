@@ -7,8 +7,10 @@ cd "$(dirname $0)"
 . ../util.sh
 
 secrets_dir="backup/backrest/secrets"
+backrest_env="backup/backrest/.env"
 fresh_dir=""
 cleanup() {
+    rm -f "$backrest_env"
     rm -f "$secrets_dir/admin_password" "$secrets_dir/repository_password" "$secrets_dir/aws_credentials"
     if [ -n "$fresh_dir" ]; then
         rm -rf "$fresh_dir"
@@ -21,10 +23,14 @@ printf 'test-admin-password' > "$secrets_dir/admin_password"
 printf 'test-repository-password' > "$secrets_dir/repository_password"
 printf '[default]\naws_access_key_id = test\naws_secret_access_key = test\n' > "$secrets_dir/aws_credentials"
 
-export BACKREST_INSTANCE=backup-integration-test
-export BACKREST_REPOSITORY_ID=local-test
-export BACKREST_REPOSITORY_URI=/tmp/backrest-test-repository
-export BACKREST_ADMIN_USERNAME=admin
+printf '%s\n' \
+    'TZ=UTC' \
+    'BACKREST_INSTANCE=backup-integration-test' \
+    'BACKREST_REPOSITORY_ID=local-test' \
+    'BACKREST_REPOSITORY_URI=/tmp/backrest-test-repository' \
+    'BACKREST_ADMIN_USERNAME=admin' \
+    'NTFY_URL=' \
+    'NTFY_TOKEN=' > "$backrest_env"
 
 docker compose up -d --quiet-pull
 

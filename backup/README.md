@@ -5,7 +5,7 @@ automatically by `backrest-bootstrap` whenever the stack starts.
 
 ## Setup
 
-1. Create `.env` from `.env.example` and set the repository URI.
+1. Create `backrest/.env` from `backrest/.env.example` and set the repository URI.
 2. Create the untracked files described in
    [backrest/secrets/README.md](backrest/secrets/README.md).
 3. Store recovery credentials separately in a password manager.

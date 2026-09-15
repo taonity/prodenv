@@ -3,14 +3,13 @@ services:
     image: ghcr.io/garethgeorge/backrest:v1.14.1
     restart: unless-stopped
     hostname: backrest
+    env_file:
+      - ./backup/backrest/.env
     environment:
       BACKREST_DATA: /data
       BACKREST_CONFIG: /config/config.json
       XDG_CACHE_HOME: /cache
       TMPDIR: /tmp
-      TZ: ${TZ:-UTC}
-      NTFY_URL: ${BACKUP_NTFY_URL:-}
-      NTFY_TOKEN: ${BACKUP_NTFY_TOKEN:-}
     volumes:
       - backrest-data:/data
       - backrest-config:/config
@@ -37,13 +36,11 @@ services:
     image: python:3.13.7-alpine3.22
     restart: "no"
     command: ["python", "/bootstrap/bootstrap.py"]
+    env_file:
+      - ./backup/backrest/.env
     environment:
       BACKREST_URL: http://backrest:9898
       BACKREST_DESIRED_CONFIG: /bootstrap/desired.json
-      BACKREST_INSTANCE: ${BACKREST_INSTANCE:-prodenv}
-      BACKREST_REPOSITORY_ID: ${BACKREST_REPOSITORY_ID:-offsite}
-      BACKREST_REPOSITORY_URI: ${BACKREST_REPOSITORY_URI:?Set BACKREST_REPOSITORY_URI in .env}
-      BACKREST_ADMIN_USERNAME: ${BACKREST_ADMIN_USERNAME:-admin}
       BACKREST_ADMIN_PASSWORD_FILE: /run/secrets/backrest_admin_password
     volumes:
       - ./backup/backrest/bootstrap.py:/bootstrap/bootstrap.py:ro
