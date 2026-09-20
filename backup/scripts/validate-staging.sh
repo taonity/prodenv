@@ -17,7 +17,7 @@ for project_dir in "$staging_root"/*; do
     continue
   fi
   project_count=$((project_count + 1))
-  "$script_dir/validate-export.sh" "$project_dir" "$max_age_hours"
+  sh "$script_dir/validate-export.sh" "$project_dir" "$max_age_hours"
 done
 
 if [ "$project_count" -eq 0 ]; then
