@@ -20,10 +20,9 @@ Application databases must create database-native exports in the external
 `prodenv-backup-staging` volume. Backing up a live database volume is
 intentionally unsupported.
 
-Use [scripts/export-postgres.sh](scripts/export-postgres.sh) for PostgreSQL or
-[scripts/export-mysql.sh](scripts/export-mysql.sh) for MySQL/MariaDB. Mount the
-staging volume in each project's export job and schedule exports before the
-snapshot time defined in
+Use [scripts/export-postgres.sh](scripts/export-postgres.sh) for PostgreSQL.
+Mount the staging volume in each project's export job and schedule exports
+before the snapshot time defined in
 [backrest/desired.json](backrest/desired.json). Backrest rejects the entire
 snapshot when any project export is missing, empty, in progress, or older than
 26 hours.
