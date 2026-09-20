@@ -106,18 +106,23 @@ deleted and recreated from the dump with its original ownership and grants.
 
 1. Stop the application's backend, Flyway, exporters, and other database
     clients.
-2. Set the target Compose network, database service, and administrator
-   credentials. Enter the password when prompted so it is not saved in shell
-   history:
+2. Find the target PostgreSQL container name:
 
    ```sh
-   export DOCKER_NETWORK=fullstack-starter-stage_backend
-   export PGHOST=db
+   docker ps --filter label=com.docker.compose.service=db \
+     --format 'table {{.Names}}\t{{.Status}}'
+   ```
+
+3. Set that container name and the administrator credentials. Enter the
+   password when prompted so it is not saved in shell history:
+
+   ```sh
+   export DB_CONTAINER=fullstack-starter-stage-db-1
    export PGUSER=dbadmin
    read -r -s PGPASSWORD && export PGPASSWORD
    ```
 
-3. Replace the database from the restored directory:
+4. Replace the database from the restored directory:
 
     ```sh
     REPLACE_DATABASE=fullstack_starter_db \
@@ -126,7 +131,7 @@ deleted and recreated from the dump with its original ownership and grants.
        fullstack_starter_db rollback
     ```
 
-4. Start the application and run a smoke test.
+5. Start the application and run a smoke test.
 
 This restores the database schema and data to the state captured by `pg_dump`.
 It does not roll back PostgreSQL cluster roles or server configuration.

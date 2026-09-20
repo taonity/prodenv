@@ -10,10 +10,14 @@ postgres_image="${POSTGRES_IMAGE:-postgres:16}"
 postgres_port="${PGPORT:-5432}"
 script_directory="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
-: "${DOCKER_NETWORK:?Set DOCKER_NETWORK to the target Docker network}"
-: "${PGHOST:?Set PGHOST to the target PostgreSQL service name}"
+: "${DB_CONTAINER:?Set DB_CONTAINER to the target PostgreSQL container name}"
 : "${PGUSER:?Set PGUSER to the target PostgreSQL administrator}"
 : "${PGPASSWORD:?Set PGPASSWORD to the administrator password}"
+
+if [ "$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null || true)" != "true" ]; then
+  echo "PostgreSQL container is not running: $DB_CONTAINER" >&2
+  exit 1
+fi
 
 case "$restore_directory" in
   /*|*..*|*[!A-Za-z0-9._/-]*)
@@ -26,8 +30,8 @@ RESTORE_VOLUME="$restore_volume" POSTGRES_IMAGE="$postgres_image" \
   sh "$script_directory/verify-postgres-restore.sh" "$restore_directory"
 
 docker run --rm \
-  --network "$DOCKER_NETWORK" \
-  -e PGHOST="$PGHOST" \
+  --network "container:$DB_CONTAINER" \
+  -e PGHOST=127.0.0.1 \
   -e PGPORT="$postgres_port" \
   -e PGUSER="$PGUSER" \
   -e PGPASSWORD="$PGPASSWORD" \
