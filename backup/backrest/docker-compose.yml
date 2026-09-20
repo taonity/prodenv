@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     hostname: backrest
     env_file:
-      - ./backup/backrest/.env
+      - .env
     environment:
       BACKREST_DATA: /data
       BACKREST_CONFIG: /config/config.json
@@ -17,7 +17,7 @@ services:
       - backrest-tmp:/tmp
       - backup-staging:/userdata:ro
       - backup-restore:/restore
-      - ./backup/scripts:/hooks:ro
+      - ../scripts:/hooks:ro
     secrets:
       - source: backrest-repository-password
         target: backrest_repository_password
@@ -37,14 +37,14 @@ services:
     restart: "no"
     command: ["python", "/bootstrap/bootstrap.py"]
     env_file:
-      - ./backup/backrest/.env
+      - .env
     environment:
       BACKREST_URL: http://backrest:9898
       BACKREST_DESIRED_CONFIG: /bootstrap/desired.json
       BACKREST_ADMIN_PASSWORD_FILE: /run/secrets/backrest_admin_password
     volumes:
-      - ./backup/backrest/bootstrap.py:/bootstrap/bootstrap.py:ro
-      - ./backup/backrest/desired.json:/bootstrap/desired.json:ro
+      - ./bootstrap.py:/bootstrap/bootstrap.py:ro
+      - ./desired.json:/bootstrap/desired.json:ro
     secrets:
       - source: backrest-admin-password
         target: backrest_admin_password
