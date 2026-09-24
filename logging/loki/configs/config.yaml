@@ -70,7 +70,7 @@ frontend:
   max_outstanding_per_tenant: 4096
 
 querier:
-  max_concurrent: 4096
+  max_concurrent: 2
 
 query_scheduler:
   max_outstanding_requests_per_tenant: 4096

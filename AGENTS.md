@@ -1,0 +1,1 @@
+- Create documentation only when explicitly requested or approved by the user; keep it concise, explain why rather than what, and avoid duplicating existing documentation or information evident from the code.

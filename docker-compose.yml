@@ -4,6 +4,10 @@ services:
     extends:
       file: cicd/docker-webhook/docker-compose.yml
       service: docker-webhook
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
      - nginx
 
@@ -11,6 +15,10 @@ services:
     extends:
       file: logging/loki/docker-compose.yml
       service: loki
+    cpus: 1.00
+    mem_limit: 512m
+    memswap_limit: 768m
+    pids_limit: 256
     networks:
      - logging
     depends_on:
@@ -21,6 +29,10 @@ services:
     extends:
       file: logging/promtail/docker-compose.yml
       service: promtail
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
      - logging
     depends_on:
@@ -31,6 +43,10 @@ services:
     extends:
       file: logging/minio/docker-compose.yml
       service: minio
+    cpus: 1.00
+    mem_limit: 512m
+    memswap_limit: 768m
+    pids_limit: 256
     networks:
      - logging
 
@@ -38,6 +54,21 @@ services:
     extends:
       file: logging/node-exporter/docker-compose.yml
       service: node-exporter
+    cpus: 0.50
+    mem_limit: 64m
+    memswap_limit: 96m
+    pids_limit: 256
+    networks:
+     - logging
+
+  cadvisor:
+    extends:
+      file: logging/cadvisor/docker-compose.yml
+      service: cadvisor
+    cpus: 0.50
+    mem_limit: 192m
+    memswap_limit: 256m
+    pids_limit: 256
     networks:
      - logging
   
@@ -45,6 +76,10 @@ services:
     extends:
       file: logging/prometheus/docker-compose.yml
       service: prometheus
+    cpus: 1.00
+    mem_limit: 384m
+    memswap_limit: 576m
+    pids_limit: 256
     networks:
      - logging
      - artist-insight-shared
@@ -52,15 +87,14 @@ services:
       node-exporter:
         condition: service_started
 
-  grafana-curl:
-    extends:
-      file: logging/grafana/curl/docker-compose.yml
-      service: grafana-curl
-
   grafana:
     extends:
       file: logging/grafana/docker-compose.yml
       service: grafana
+    cpus: 0.50
+    mem_limit: 256m
+    memswap_limit: 384m
+    pids_limit: 256
     networks:
      - logging
      - nginx
@@ -71,21 +105,15 @@ services:
         condition: service_started
       prometheus:
         condition: service_started
-      grafana-curl:
-        condition: service_completed_successfully
-  
-  # grafana-curl:
-  #   extends:
-  #     file: logging/grafana/curl/docker-compose.yml
-  #     service: grafana-curl
-  #   depends_on:
-  #     grafana:
-  #       condition: service_started
 
   grafana-mcp-bootstrap:
     extends:
       file: logging/grafana-mcp/docker-compose.yml
       service: grafana-mcp-bootstrap
+    cpus: 0.50
+    mem_limit: 64m
+    memswap_limit: 96m
+    pids_limit: 256
     networks:
       - logging
     depends_on:
@@ -96,6 +124,10 @@ services:
     extends:
       file: logging/grafana-mcp/docker-compose.yml
       service: grafana-mcp
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
       - logging
       - artist-insight-shared
@@ -107,6 +139,10 @@ services:
     extends:
       file: logging/logcli/docker-compose.yml
       service: logcli
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
      - logging
     depends_on:
@@ -117,6 +153,10 @@ services:
     extends:
       file: backup/backrest/docker-compose.yml
       service: backrest
+    cpus: 1.00
+    mem_limit: 768m
+    memswap_limit: 1152m
+    pids_limit: 256
     networks:
       - nginx
 
@@ -124,6 +164,10 @@ services:
     extends:
       file: backup/backrest/docker-compose.yml
       service: backrest-bootstrap
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
       - nginx
 
@@ -131,6 +175,10 @@ services:
     extends:
       file: portainer/docker-compose.yml
       service: portainer
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
      - nginx
      
@@ -138,6 +186,10 @@ services:
     extends:
       file: nginx/nginx/docker-compose.yml
       service: nginx
+    cpus: 0.50
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 256
     networks:
      - nginx
      - prodenv-shared-internal
@@ -145,16 +197,28 @@ services:
     extends:
       file: nginx/certbot/docker-compose.yml
       service: certbot
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
 
   ddns:
     extends:
       file: ddns/docker-compose.yml
       service: ddns
+    cpus: 0.50
+    mem_limit: 32m
+    memswap_limit: 48m
+    pids_limit: 256
   
   ntfy:
     extends:
       file: ntfy/docker-compose.yml
       service: ntfy
+    cpus: 0.50
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 256
     networks:
      - nginx
  

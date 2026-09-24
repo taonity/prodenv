@@ -1,0 +1,74 @@
+groups:
+  - name: host-and-container-resources
+    rules:
+      - alert: HostMemoryPressure
+        expr: node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} < 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host has less than 10% available RAM"
+          description: "Check container working sets and swap activity before lowering any hard limits."
+
+      - alert: HostSwapChurn
+        expr: rate(node_vmstat_pswpin{job="node"}[5m]) > 16 and on(instance) (node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} < 0.10)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host is persistently paging memory back from swap"
+          description: "Swap is an emergency buffer, not enough capacity for the active workload."
+
+      - alert: ContainerNearMemoryLimit
+        expr: |
+          container_memory_working_set_bytes{job="cadvisor",image!="",name!=""}
+          / (container_spec_memory_limit_bytes{job="cadvisor",image!="",name!=""} > 0
+             and container_spec_memory_limit_bytes{job="cadvisor",image!="",name!=""}
+                 < scalar(node_memory_MemTotal_bytes{job="node"})) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} is above 90% of its RAM limit"
+          description: "Working set excludes inactive file cache; also inspect total charged memory, JVM native memory and OOM state."
+
+      - alert: ContainerWithoutMemoryLimit
+        expr: |
+          container_spec_memory_limit_bytes{job="cadvisor",image!="",name!=""} <= 0
+          or container_spec_memory_limit_bytes{job="cadvisor",image!="",name!=""}
+             >= scalar(node_memory_MemTotal_bytes{job="node"})
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} has no effective RAM cap below host capacity"
+          description: "Check Docker HostConfig.Memory and persist a suitable limit in the owning Compose project."
+
+      - alert: ContainerCPUThrottling
+        expr: |
+          rate(container_cpu_cfs_throttled_periods_total{job="cadvisor",image!="",name!=""}[5m])
+          / clamp_min(rate(container_cpu_cfs_periods_total{job="cadvisor",image!="",name!=""}[5m]), 0.001) > 0.25
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} is CPU-throttled in more than 25% of scheduling periods"
+          description: "Check latency and host CPU headroom before increasing its CPU quota."
+
+      - alert: ContainerMetricsUnavailable
+        expr: up{job="cadvisor"} == 0 or absent(up{job="cadvisor"})
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container resource metrics are unavailable"
+          description: "Check cAdvisor health, resource limits, Docker data-root and host mounts."
+
+      - alert: HostMetricsUnavailable
+        expr: up{job="node"} == 0 or absent(up{job="node"})
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host resource metrics are unavailable"
+          description: "Check node-exporter; memory-limit comparisons require host total RAM."

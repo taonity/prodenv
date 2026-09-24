@@ -1,16 +1,32 @@
 services:
   db:
     restart: unless-stopped
+    cpus: "${DB_CPU_LIMIT:-0.50}"
+    mem_limit: ${DB_MEMORY_LIMIT:-256m}
+    memswap_limit: ${DB_MEMORY_SWAP_LIMIT:-384m}
+    pids_limit: ${DB_PIDS_LIMIT:-128}
     ports:
       - 5435:5432
 
   flyway:
     restart: "no"
+    cpus: "${FLYWAY_CPU_LIMIT:-0.50}"
+    mem_limit: ${FLYWAY_MEMORY_LIMIT:-384m}
+    memswap_limit: ${FLYWAY_MEMORY_SWAP_LIMIT:-512m}
+    pids_limit: ${FLYWAY_PIDS_LIMIT:-256}
 
   app:
     restart: unless-stopped
+    cpus: "${BACKEND_CPU_LIMIT:-0.50}"
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-512m}
+    memswap_limit: ${BACKEND_MEMORY_SWAP_LIMIT:-768m}
+    pids_limit: ${BACKEND_PIDS_LIMIT:-512}
 
   frontend:
     restart: unless-stopped
+    cpus: "${FRONTEND_CPU_LIMIT:-0.50}"
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-256m}
+    memswap_limit: ${FRONTEND_MEMORY_SWAP_LIMIT:-384m}
+    pids_limit: ${FRONTEND_PIDS_LIMIT:-128}
     ports:
       - 127.0.0.1:3003:3000
