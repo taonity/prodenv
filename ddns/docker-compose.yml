@@ -9,5 +9,5 @@ services:
     env_file:
      - .env
     environment:
-      - DOMAINS=taonity.org,*.taonity.org
-      - PROXIED=true
+      - DOMAINS=taonity.org,*.taonity.org,webhook.taonity.org
+      - PROXIED=!is(webhook.taonity.org)
