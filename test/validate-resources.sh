@@ -91,6 +91,8 @@ try {
 
   const dashboardSources = [{id: 1860, revision: 37}, {id: 19792, revision: 6}];
   const expressions = [];
+  const memoryOverviewQueries = {};
+  let memoryHistoryQuery;
   const dashboardUids = new Set();
   let panelCount = 0;
   function collectPanels(panels) {
@@ -122,6 +124,39 @@ try {
     checkDatasourceReferences(dashboard, datasources[0].name);
     const panels = collectPanels(dashboard.panels);
     assert.equal(new Set(panels.map(panel => panel.id)).size, panels.length);
+    if (source.id === 19792) {
+      const overview = dashboard.panels[0];
+      assert.equal(overview.id, 9001);
+      assert.equal(overview.type, 'table');
+      assert.deepEqual(overview.gridPos, {h: 12, w: 12, x: 0, y: 0});
+      assert.deepEqual(overview.options.sortBy, [{displayName: 'RAM %', desc: true}]);
+      assert.deepEqual(overview.transformations[0], {id: 'joinByField', options: {byField: 'name', mode: 'outerTabular'}});
+      const percentage = overview.fieldConfig.overrides.find(override => override.matcher.options === 'RAM %');
+      assert.equal(percentage.properties.find(property => property.id === 'unit').value, 'percent');
+      assert.deepEqual(percentage.properties.find(property => property.id === 'thresholds').value.steps,
+        [{color: 'green', value: null}, {color: 'orange', value: 80}, {color: 'red', value: 90}]);
+      const history = dashboard.panels[1];
+      assert.equal(history.id, 9002);
+      assert.equal(history.type, 'timeseries');
+      assert.deepEqual(history.gridPos, {h: 12, w: 12, x: 12, y: 0});
+      assert.equal(history.fieldConfig.defaults.unit, 'percent');
+      assert.equal(history.fieldConfig.defaults.custom.stacking.mode, 'none');
+      assert.equal(history.fieldConfig.defaults.custom.spanNulls, false);
+      assert.equal(history.fieldConfig.defaults.custom.thresholdsStyle.mode, 'line');
+      assert.deepEqual(history.fieldConfig.defaults.thresholds.steps,
+        percentage.properties.find(property => property.id === 'thresholds').value.steps);
+      assert.deepEqual(history.options.legend.calcs, ['lastNotNull', 'max']);
+      assert.equal(history.targets.length, 1);
+      assert.equal(history.targets[0].expr, overview.targets.find(target => target.refId === 'C').expr);
+      for (const panel of panels.filter(panel => panel.id !== overview.id && panel.id !== history.id)) {
+        assert(panel.gridPos.y >= overview.gridPos.h, 'Diagnostic panel overlaps the overview');
+      }
+      for (const variable of dashboard.templating.list.filter(variable => variable.type === 'query')) {
+        assert(variable.includeAll);
+        assert.equal(variable.allValue, '.*');
+        assert.deepEqual(variable.current.value, ['$__all']);
+      }
+    }
     panelCount += panels.length;
     const variables = {
       __rate_interval: '5m', job: 'node', node: 'node-exporter:9100', diskdevices: '.*',
@@ -130,11 +165,24 @@ try {
     for (const panel of panels) {
       for (const target of panel.targets || []) {
         if (!target.expr) continue;
-        expressions.push(target.expr.replace(/\$\{(\w+)(?::[^}]*)?\}|\$(\w+)/g, (match, braced, plain) => {
+        const expression = target.expr.replace(/\$\{(\w+)(?::[^}]*)?\}|\$(\w+)/g, (match, braced, plain) => {
           const name = braced || plain;
           assert(Object.prototype.hasOwnProperty.call(variables, name), `Unknown query variable: ${match}`);
           return variables[name];
-        }));
+        });
+        expressions.push(expression);
+        if (source.id === 19792 && panel.id === 9001) {
+          assert.equal(target.instant, true);
+          assert.equal(target.format, 'table');
+          memoryOverviewQueries[target.refId] = expression;
+        }
+        if (source.id === 19792 && panel.id === 9002) {
+          assert.equal(target.instant, false);
+          assert.equal(target.range, true);
+          assert.equal(target.format, 'time_series');
+          assert.equal(target.legendFormat, '{{name}}');
+          memoryHistoryQuery = expression;
+        }
       }
     }
     console.log(`Dashboard ${source.id} revision ${source.revision}: ${panels.length} panels/rows; datasource bindings verified`);
@@ -191,7 +239,67 @@ try {
     ],
   });
   run(promtool, ['test', 'rules', alertTests], {stdio: 'inherit'});
-  console.log(`Resource validation passed: ${dashboardSources.length} pinned dashboards, ${panelCount} panels/rows, ${expressions.length} queries, 3 alert scenarios`);
+  assert.deepEqual(Object.keys(memoryOverviewQueries).sort(), ['A', 'B', 'C', 'D']);
+  const overviewContainers = [
+    {name: 'bounded', limit: 268435456, workingSet: 201326592, swap: 0},
+    {name: 'unlimited-zero', limit: 0, workingSet: 33554432, swap: 1048576},
+    {name: 'unlimited-host', limit: 8589934592, workingSet: 33554432},
+    {name: 'unlimited-v1', limit: '9223372036854771712', workingSet: 33554432},
+    {name: 'missing-limit', workingSet: 33554432},
+    {name: 'other-project', project: 'other', limit: 268435456, workingSet: 67108864},
+  ];
+  const overviewSeries = overviewContainers.flatMap(container => {
+    const labels = `job="cadvisor",instance="cadvisor:8080",image="java",name="${container.name}",container_label_com_docker_compose_project="${container.project || 'prodenv'}"`;
+    const metrics = {container_memory_working_set_bytes: container.workingSet,
+      container_spec_memory_limit_bytes: container.limit, container_memory_swap: container.swap};
+    return Object.entries(metrics).filter(([, value]) => value !== undefined)
+      .map(([metric, value]) => ({series: `${metric}{${labels}}`, values: `${value}+0x10`}));
+  });
+  const overviewTests = writeJson('memory-overview-tests.json', {
+    rule_files: [], evaluation_interval: '1m',
+    tests: [
+      {
+        interval: '1m', input_series: [hostTotal, ...overviewSeries],
+        promql_expr_test: [
+          {expr: memoryOverviewQueries.A, eval_time: '5m', exp_samples: overviewContainers.filter(container => !container.project)
+            .map(container => ({labels: `{name="${container.name}"}`, value: container.workingSet}))},
+          {expr: memoryOverviewQueries.B, eval_time: '5m', exp_samples: [{labels: '{name="bounded"}', value: 268435456}]},
+          {expr: memoryOverviewQueries.C, eval_time: '5m', exp_samples: [{labels: '{name="bounded"}', value: 75}]},
+          {expr: memoryOverviewQueries.D, eval_time: '5m', exp_samples: [
+            {labels: '{name="bounded"}', value: 0}, {labels: '{name="unlimited-zero"}', value: 1048576},
+          ]},
+          {expr: memoryOverviewQueries.C.replace(/container_label_com_docker_compose_project=~"prodenv"/g,
+            'container_label_com_docker_compose_project=~".*"'), eval_time: '5m', exp_samples: [
+              {labels: '{name="bounded"}', value: 75}, {labels: '{name="other-project"}', value: 25},
+            ]},
+        ],
+      },
+      {
+        interval: '1m', input_series: overviewSeries,
+        promql_expr_test: [
+          {expr: memoryOverviewQueries.B, eval_time: '5m', exp_samples: []},
+          {expr: memoryOverviewQueries.C, eval_time: '5m', exp_samples: []},
+        ],
+      },
+      {
+        interval: '1m', input_series: [hostTotal,
+          {series: 'container_memory_working_set_bytes{job="cadvisor",instance="cadvisor:8080",image="java",name="growing",container_label_com_docker_compose_project="prodenv"}',
+            values: '134217728 201326592 251658240 251658240 stale'},
+          {series: 'container_spec_memory_limit_bytes{job="cadvisor",instance="cadvisor:8080",image="java",name="growing",container_label_com_docker_compose_project="prodenv"}',
+            values: '268435456 268435456 268435456 536870912 536870912'},
+        ],
+        promql_expr_test: [
+          {expr: memoryHistoryQuery, eval_time: '0m', exp_samples: [{labels: '{name="growing"}', value: 50}]},
+          {expr: memoryHistoryQuery, eval_time: '1m', exp_samples: [{labels: '{name="growing"}', value: 75}]},
+          {expr: memoryHistoryQuery, eval_time: '2m', exp_samples: [{labels: '{name="growing"}', value: 93.75}]},
+          {expr: memoryHistoryQuery, eval_time: '3m', exp_samples: [{labels: '{name="growing"}', value: 46.875}]},
+          {expr: memoryHistoryQuery, eval_time: '4m', exp_samples: []},
+        ],
+      },
+    ],
+  });
+  run(promtool, ['test', 'rules', overviewTests], {stdio: 'inherit'});
+  console.log(`Resource validation passed: ${dashboardSources.length} pinned dashboards, ${panelCount} panels/rows, ${expressions.length} queries, 3 alert scenarios, 3 memory overview/history scenarios`);
 } finally {
   if (fs.rmSync) {
     fs.rmSync(temporary, {recursive: true, force: true});

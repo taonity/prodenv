@@ -106,12 +106,271 @@
     "liveNow":  false,
     "panels":  [
                    {
+                       "id":  9001,
+                       "title":  "Container Memory",
+                       "type":  "table",
+                       "description":  "RAM used is the working set, excluding inactive file cache. RAM limit is the Docker memory ceiling, not reserved RAM. Limits at or above host RAM are treated as unbounded. Missing limits or host metrics show N/A; missing swap accounting is not zero swap.",
+                       "datasource":  {
+                                          "type":  "prometheus",
+                                          "uid":  "${DS_PROMETHEUS}"
+                                      },
+                       "gridPos":  {
+                                       "h":  12,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "custom":  {
+                                                                           "align":  "auto",
+                                                                           "cellOptions":  {
+                                                                                               "type":  "auto"
+                                                                                           },
+                                                                           "filterable":  true
+                                                                       },
+                                                            "noValue":  "N/A"
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "RAM used"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "unit",
+                                                                                        "value":  "bytes"
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "RAM limit"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "unit",
+                                                                                        "value":  "bytes"
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "noValue",
+                                                                                        "value":  "Unbounded / unavailable"
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "RAM %"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "unit",
+                                                                                        "value":  "percent"
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "decimals",
+                                                                                        "value":  1
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "min",
+                                                                                        "value":  0
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "max",
+                                                                                        "value":  100
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "thresholds"
+                                                                                                  }
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "thresholds",
+                                                                                        "value":  {
+                                                                                                      "mode":  "absolute",
+                                                                                                      "steps":  [
+                                                                                                                    {
+                                                                                                                        "color":  "green",
+                                                                                                                        "value":  null
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "color":  "orange",
+                                                                                                                        "value":  80
+                                                                                                                    },
+                                                                                                                    {
+                                                                                                                        "color":  "red",
+                                                                                                                        "value":  90
+                                                                                                                    }
+                                                                                                                ]
+                                                                                                  }
+                                                                                    },
+                                                                                    {
+                                                                                        "id":  "custom.cellOptions",
+                                                                                        "value":  {
+                                                                                                      "type":  "gauge",
+                                                                                                      "mode":  "basic",
+                                                                                                      "valueDisplayMode":  "text"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "Swap used"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "unit",
+                                                                                        "value":  "bytes"
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "showHeader":  true,
+                                       "cellHeight":  "sm",
+                                       "footer":  {
+                                                      "show":  false
+                                                  },
+                                       "sortBy":  [
+                                                      {
+                                                          "displayName":  "RAM %",
+                                                          "desc":  true
+                                                      }
+                                                  ]
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "format":  "table",
+                                           "instant":  true,
+                                           "range":  false,
+                                           "expr":  "max by (name) (container_memory_working_set_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"})"
+                                       },
+                                       {
+                                           "refId":  "B",
+                                           "format":  "table",
+                                           "instant":  true,
+                                           "range":  false,
+                                           "expr":  "max by (name) (container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} \u003e 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} \u003c scalar(node_memory_MemTotal_bytes{job=\"node\"}))"
+                                       },
+                                       {
+                                           "refId":  "C",
+                                           "format":  "table",
+                                           "instant":  true,
+                                           "range":  false,
+                                           "expr":  "100 * max by (name) (container_memory_working_set_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"}) / max by (name) (container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} \u003e 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} \u003c scalar(node_memory_MemTotal_bytes{job=\"node\"}))"
+                                       },
+                                       {
+                                           "refId":  "D",
+                                           "format":  "table",
+                                           "instant":  true,
+                                           "range":  false,
+                                           "expr":  "max by (name) (container_memory_swap{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"})"
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "joinByField",
+                                                   "options":  {
+                                                                   "byField":  "name",
+                                                                   "mode":  "outerTabular"
+                                                               }
+                                               },
+                                               {
+                                                   "id":  "filterFieldsByName",
+                                                   "options":  {
+                                                                   "include":  {
+                                                                                   "names":  [
+                                                                                                 "name",
+                                                                                                 "Value #A",
+                                                                                                 "Value #B",
+                                                                                                 "Value #C",
+                                                                                                 "Value #D"
+                                                                                             ]
+                                                                               }
+                                                               }
+                                               },
+                                               {
+                                                   "id":  "organize",
+                                                   "options":  {
+                                                                   "indexByName":  {
+                                                                                       "name":  0,
+                                                                                       "Value #A":  1,
+                                                                                       "Value #B":  2,
+                                                                                       "Value #C":  3,
+                                                                                       "Value #D":  4
+                                                                                   },
+                                                                   "renameByName":  {
+                                                                                        "name":  "Container",
+                                                                                        "Value #A":  "RAM used",
+                                                                                        "Value #B":  "RAM limit",
+                                                                                        "Value #C":  "RAM %",
+                                                                                        "Value #D":  "Swap used"
+                                                                                    }
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id": 9002,
+                       "title": "RAM Limit Used (%)",
+                       "type": "timeseries",
+                       "description": "Memory working set as a percentage of each container's RAM limit at that time. Inactive file cache and swap are excluded. Unbounded or unavailable limits are omitted; missing samples remain gaps.",
+                       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+                       "gridPos": {"h": 12, "w": 12, "x": 12, "y": 0},
+                       "fieldConfig": {
+                           "defaults": {
+                               "unit": "percent",
+                               "decimals": 1,
+                               "min": 0,
+                               "color": {"mode": "palette-classic"},
+                               "custom": {
+                                   "drawStyle": "line",
+                                   "lineInterpolation": "linear",
+                                   "lineWidth": 2,
+                                   "fillOpacity": 0,
+                                   "showPoints": "auto",
+                                   "spanNulls": false,
+                                   "axisSoftMax": 100,
+                                   "stacking": {"mode": "none", "group": "A"},
+                                   "thresholdsStyle": {"mode": "line"}
+                               },
+                               "thresholds": {
+                                   "mode": "absolute",
+                                   "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 80}, {"color": "red", "value": 90}]
+                               }
+                           },
+                           "overrides": []
+                       },
+                       "options": {
+                           "legend": {"showLegend": true, "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]},
+                           "tooltip": {"mode": "multi", "sort": "desc"}
+                       },
+                       "targets": [
+                           {
+                               "refId": "A",
+                               "format": "time_series",
+                               "instant": false,
+                               "range": true,
+                               "legendFormat": "{{name}}",
+                               "expr": "100 * max by (name) (container_memory_working_set_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"}) / max by (name) (container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",instance=~\"$host_instance\",image!=\"\",name!=\"\",name=~\"$container_name\",container_label_com_docker_compose_project=~\"$compose_project\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"}))"
+                           }
+                       ]
+                   },
+                   {
                        "collapsed":  true,
                        "gridPos":  {
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  0
+                                       "y":  12
                                    },
                        "id":  26,
                        "panels":  [
@@ -151,7 +410,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  0,
-                                                          "y":  1
+                                                          "y":  13
                                                       },
                                           "id":  59,
                                           "options":  {
@@ -229,7 +488,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  3,
-                                                          "y":  1
+                                                          "y":  13
                                                       },
                                           "id":  24,
                                           "options":  {
@@ -337,7 +596,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  1
+                                                          "y":  13
                                                       },
                                           "id":  60,
                                           "options":  {
@@ -443,7 +702,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  1
+                                                          "y":  13
                                                       },
                                           "id":  56,
                                           "options":  {
@@ -548,7 +807,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  1
+                                                          "y":  13
                                                       },
                                           "id":  57,
                                           "options":  {
@@ -592,7 +851,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  1
+                                       "y":  13
                                    },
                        "id":  8,
                        "panels":  [
@@ -668,7 +927,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  0,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  2,
                                           "options":  {
@@ -774,7 +1033,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  7,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  11,
                                           "options":  {
@@ -880,7 +1139,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  14,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  6,
                                           "options":  {
@@ -985,7 +1244,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  21,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  3,
                                           "options":  {
@@ -1091,7 +1350,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  0,
-                                                          "y":  20
+                                                          "y":  32
                                                       },
                                           "id":  40,
                                           "options":  {
@@ -1197,7 +1456,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  7,
-                                                          "y":  20
+                                                          "y":  32
                                                       },
                                           "id":  41,
                                           "options":  {
@@ -1303,7 +1562,7 @@
                                                           "h":  9,
                                                           "w":  7,
                                                           "x":  14,
-                                                          "y":  20
+                                                          "y":  32
                                                       },
                                           "id":  42,
                                           "options":  {
@@ -1408,7 +1667,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  21,
-                                                          "y":  20
+                                                          "y":  32
                                                       },
                                           "id":  10,
                                           "options":  {
@@ -1451,7 +1710,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  2
+                                       "y":  14
                                    },
                        "id":  45,
                        "panels":  [
@@ -1527,7 +1786,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  0,
-                                                          "y":  3
+                                                          "y":  15
                                                       },
                                           "id":  28,
                                           "options":  {
@@ -1633,7 +1892,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  8,
-                                                          "y":  3
+                                                          "y":  15
                                                       },
                                           "id":  29,
                                           "options":  {
@@ -1739,7 +1998,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  16,
-                                                          "y":  3
+                                                          "y":  15
                                                       },
                                           "id":  31,
                                           "options":  {
@@ -1845,7 +2104,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  0,
-                                                          "y":  12
+                                                          "y":  24
                                                       },
                                           "id":  34,
                                           "options":  {
@@ -1951,7 +2210,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  8,
-                                                          "y":  12
+                                                          "y":  24
                                                       },
                                           "id":  35,
                                           "options":  {
@@ -2057,7 +2316,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  16,
-                                                          "y":  12
+                                                          "y":  24
                                                       },
                                           "id":  32,
                                           "options":  {
@@ -2163,7 +2422,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  0,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  30,
                                           "options":  {
@@ -2269,7 +2528,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  8,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  27,
                                           "options":  {
@@ -2375,7 +2634,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  16,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  33,
                                           "options":  {
@@ -2481,7 +2740,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  0,
-                                                          "y":  30
+                                                          "y":  42
                                                       },
                                           "id":  36,
                                           "options":  {
@@ -2587,7 +2846,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  8,
-                                                          "y":  30
+                                                          "y":  42
                                                       },
                                           "id":  37,
                                           "options":  {
@@ -2705,7 +2964,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  16,
-                                                          "y":  30
+                                                          "y":  42
                                                       },
                                           "id":  38,
                                           "options":  {
@@ -2749,7 +3008,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  3
+                                       "y":  15
                                    },
                        "id":  51,
                        "panels":  [
@@ -2824,7 +3083,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  0,
-                                                          "y":  4
+                                                          "y":  16
                                                       },
                                           "id":  46,
                                           "options":  {
@@ -2941,7 +3200,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  4
+                                                          "y":  16
                                                       },
                                           "id":  49,
                                           "options":  {
@@ -3070,7 +3329,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  4
+                                                          "y":  16
                                                       },
                                           "id":  47,
                                           "options":  {
@@ -3187,7 +3446,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  4
+                                                          "y":  16
                                                       },
                                           "id":  48,
                                           "options":  {
@@ -3243,7 +3502,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  4
+                                       "y":  16
                                    },
                        "id":  53,
                        "panels":  [
@@ -3319,7 +3578,7 @@
                                                           "h":  9,
                                                           "w":  8,
                                                           "x":  0,
-                                                          "y":  5
+                                                          "y":  17
                                                       },
                                           "id":  43,
                                           "options":  {
@@ -3362,7 +3621,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  5
+                                       "y":  17
                                    },
                        "id":  23,
                        "panels":  [
@@ -3434,7 +3693,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  0,
-                                                          "y":  6
+                                                          "y":  18
                                                       },
                                           "id":  13,
                                           "options":  {
@@ -3551,7 +3810,7 @@
                                                           "h":  9,
                                                           "w":  3,
                                                           "x":  3,
-                                                          "y":  6
+                                                          "y":  18
                                                       },
                                           "id":  17,
                                           "options":  {
@@ -3653,7 +3912,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  6
+                                                          "y":  18
                                                       },
                                           "id":  15,
                                           "options":  {
@@ -3758,7 +4017,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  6
+                                                          "y":  18
                                                       },
                                           "id":  21,
                                           "options":  {
@@ -3864,7 +4123,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  6
+                                                          "y":  18
                                                       },
                                           "id":  16,
                                           "options":  {
@@ -3981,7 +4240,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  0,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  18,
                                           "options":  {
@@ -4098,7 +4357,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  39,
                                           "options":  {
@@ -4215,7 +4474,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  20,
                                           "options":  {
@@ -4333,7 +4592,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  19,
                                           "options":  {
@@ -4389,7 +4648,7 @@
                                        "h":  1,
                                        "w":  24,
                                        "x":  0,
-                                       "y":  6
+                                       "y":  18
                                    },
                        "id":  63,
                        "panels":  [
@@ -4426,7 +4685,7 @@
                                                           "h":  4,
                                                           "w":  3,
                                                           "x":  0,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  445,
                                           "options":  {
@@ -4500,7 +4759,7 @@
                                                           "h":  2,
                                                           "w":  3,
                                                           "x":  3,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  387,
                                           "options":  {
@@ -4574,7 +4833,7 @@
                                                           "h":  2,
                                                           "w":  3,
                                                           "x":  6,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  402,
                                           "options":  {
@@ -4682,7 +4941,7 @@
                                                           "h":  4,
                                                           "w":  2,
                                                           "x":  9,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  240,
                                           "options":  {
@@ -4750,7 +5009,7 @@
                                                           "h":  4,
                                                           "w":  2,
                                                           "x":  11,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  444,
                                           "options":  {
@@ -4824,7 +5083,7 @@
                                                           "h":  2,
                                                           "w":  11,
                                                           "x":  13,
-                                                          "y":  7
+                                                          "y":  19
                                                       },
                                           "id":  411,
                                           "options":  {
@@ -4898,7 +5157,7 @@
                                                           "h":  2,
                                                           "w":  6,
                                                           "x":  3,
-                                                          "y":  9
+                                                          "y":  21
                                                       },
                                           "id":  459,
                                           "options":  {
@@ -4972,7 +5231,7 @@
                                                           "h":  2,
                                                           "w":  11,
                                                           "x":  13,
-                                                          "y":  9
+                                                          "y":  21
                                                       },
                                           "id":  421,
                                           "options":  {
@@ -5046,7 +5305,7 @@
                                                           "h":  4,
                                                           "w":  3,
                                                           "x":  0,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  432,
                                           "options":  {
@@ -5120,7 +5379,7 @@
                                                           "h":  4,
                                                           "w":  3,
                                                           "x":  3,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  61,
                                           "options":  {
@@ -5191,7 +5450,7 @@
                                                           "h":  4,
                                                           "w":  3,
                                                           "x":  6,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  134,
                                           "options":  {
@@ -5262,7 +5521,7 @@
                                                           "h":  2,
                                                           "w":  6,
                                                           "x":  9,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  381,
                                           "options":  {
@@ -5336,7 +5595,7 @@
                                                           "h":  2,
                                                           "w":  9,
                                                           "x":  15,
-                                                          "y":  11
+                                                          "y":  23
                                                       },
                                           "id":  474,
                                           "options":  {
@@ -5410,7 +5669,7 @@
                                                           "h":  2,
                                                           "w":  6,
                                                           "x":  9,
-                                                          "y":  13
+                                                          "y":  25
                                                       },
                                           "id":  394,
                                           "options":  {
@@ -5484,7 +5743,7 @@
                                                           "h":  2,
                                                           "w":  9,
                                                           "x":  15,
-                                                          "y":  13
+                                                          "y":  25
                                                       },
                                           "id":  490,
                                           "options":  {
@@ -5610,7 +5869,7 @@
                                                           "h":  6,
                                                           "w":  9,
                                                           "x":  0,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  491,
                                           "options":  {
@@ -5740,7 +5999,7 @@
                                                           "h":  6,
                                                           "w":  4,
                                                           "x":  9,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  492,
                                           "options":  {
@@ -5845,7 +6104,7 @@
                                                           "h":  6,
                                                           "w":  4,
                                                           "x":  13,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  493,
                                           "options":  {
@@ -5950,7 +6209,7 @@
                                                           "h":  6,
                                                           "w":  4,
                                                           "x":  17,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  494,
                                           "options":  {
@@ -6054,7 +6313,7 @@
                                                           "h":  6,
                                                           "w":  3,
                                                           "x":  21,
-                                                          "y":  15
+                                                          "y":  27
                                                       },
                                           "id":  495,
                                           "options":  {
@@ -6181,7 +6440,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  0,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  496,
                                           "options":  {
@@ -6286,7 +6545,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  4,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  497,
                                           "options":  {
@@ -6391,7 +6650,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  8,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  498,
                                           "options":  {
@@ -6496,7 +6755,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  12,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  499,
                                           "options":  {
@@ -6601,7 +6860,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  16,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  500,
                                           "options":  {
@@ -6706,7 +6965,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  20,
-                                                          "y":  21
+                                                          "y":  33
                                                       },
                                           "id":  501,
                                           "options":  {
@@ -6811,7 +7070,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  0,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  502,
                                           "options":  {
@@ -6916,7 +7175,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  4,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  503,
                                           "options":  {
@@ -7021,7 +7280,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  8,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  504,
                                           "options":  {
@@ -7126,7 +7385,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  12,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  505,
                                           "options":  {
@@ -7231,7 +7490,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  16,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  506,
                                           "options":  {
@@ -7348,7 +7607,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  20,
-                                                          "y":  26
+                                                          "y":  38
                                                       },
                                           "id":  507,
                                           "options":  {
@@ -7453,7 +7712,7 @@
                                                           "h":  7,
                                                           "w":  6,
                                                           "x":  0,
-                                                          "y":  31
+                                                          "y":  43
                                                       },
                                           "id":  508,
                                           "options":  {
@@ -7570,7 +7829,7 @@
                                                           "h":  7,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  31
+                                                          "y":  43
                                                       },
                                           "id":  509,
                                           "options":  {
@@ -7699,7 +7958,7 @@
                                                           "h":  7,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  31
+                                                          "y":  43
                                                       },
                                           "id":  510,
                                           "options":  {
@@ -7816,7 +8075,7 @@
                                                           "h":  7,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  31
+                                                          "y":  43
                                                       },
                                           "id":  511,
                                           "options":  {
@@ -7933,7 +8192,7 @@
                                                           "h":  5,
                                                           "w":  6,
                                                           "x":  0,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  512,
                                           "options":  {
@@ -8033,7 +8292,7 @@
                                                           "h":  5,
                                                           "w":  3,
                                                           "x":  6,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  513,
                                           "options":  {
@@ -8150,7 +8409,7 @@
                                                           "h":  5,
                                                           "w":  3,
                                                           "x":  9,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  514,
                                           "options":  {
@@ -8251,7 +8510,7 @@
                                                           "h":  5,
                                                           "w":  3,
                                                           "x":  12,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  515,
                                           "options":  {
@@ -8355,7 +8614,7 @@
                                                           "h":  5,
                                                           "w":  5,
                                                           "x":  15,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  516,
                                           "options":  {
@@ -8460,7 +8719,7 @@
                                                           "h":  5,
                                                           "w":  4,
                                                           "x":  20,
-                                                          "y":  38
+                                                          "y":  50
                                                       },
                                           "id":  517,
                                           "options":  {
@@ -8577,7 +8836,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  0,
-                                                          "y":  43
+                                                          "y":  55
                                                       },
                                           "id":  518,
                                           "options":  {
@@ -8694,7 +8953,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  6,
-                                                          "y":  43
+                                                          "y":  55
                                                       },
                                           "id":  519,
                                           "options":  {
@@ -8811,7 +9070,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  12,
-                                                          "y":  43
+                                                          "y":  55
                                                       },
                                           "id":  520,
                                           "options":  {
@@ -8928,7 +9187,7 @@
                                                           "h":  9,
                                                           "w":  6,
                                                           "x":  18,
-                                                          "y":  43
+                                                          "y":  55
                                                       },
                                           "id":  521,
                                           "options":  {
@@ -9013,7 +9272,13 @@
                                     },
                                     {
                                         "current":  {
-
+                                                        "selected":  true,
+                                                        "text":  [
+                                                                     "All"
+                                                                 ],
+                                                        "value":  [
+                                                                      "$__all"
+                                                                  ]
                                                     },
                                         "datasource":  {
                                                            "type":  "prometheus",
@@ -9036,12 +9301,18 @@
                                         "regex":  "",
                                         "skipUrlSync":  false,
                                         "sort":  1,
-                                        "type":  "query"
+                                        "type":  "query",
+                                        "allValue":  ".*"
                                     },
                                     {
-                                        "allValue":  ".*",
                                         "current":  {
-
+                                                        "selected":  true,
+                                                        "text":  [
+                                                                     "All"
+                                                                 ],
+                                                        "value":  [
+                                                                      "$__all"
+                                                                  ]
                                                     },
                                         "datasource":  {
                                                            "type":  "prometheus",
@@ -9065,11 +9336,18 @@
                                         "regex":  "",
                                         "skipUrlSync":  false,
                                         "sort":  0,
-                                        "type":  "query"
+                                        "type":  "query",
+                                        "allValue":  ".*"
                                     },
                                     {
                                         "current":  {
-
+                                                        "selected":  true,
+                                                        "text":  [
+                                                                     "All"
+                                                                 ],
+                                                        "value":  [
+                                                                      "$__all"
+                                                                  ]
                                                     },
                                         "datasource":  {
                                                            "type":  "prometheus",
@@ -9092,7 +9370,8 @@
                                         "regex":  "",
                                         "skipUrlSync":  false,
                                         "sort":  1,
-                                        "type":  "query"
+                                        "type":  "query",
+                                        "allValue":  ".*"
                                     }
                                 ]
                    },
@@ -9106,7 +9385,7 @@
     "timezone":  "",
     "title":  "cadvisor dashboard",
     "uid":  "9AJV_mnIk",
-    "version":  7,
+    "version":  8,
     "weekStart":  "",
     "gnetId":  19792,
     "x-upstream":  {
