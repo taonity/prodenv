@@ -6,7 +6,7 @@ services:
     memswap_limit: ${DB_MEMORY_SWAP_LIMIT:-384m}
     pids_limit: ${DB_PIDS_LIMIT:-128}
     ports:
-      - 5436:5432
+      - 127.0.0.1:5436:5432
 
   flyway:
     restart: "no"
