@@ -131,11 +131,12 @@ try {
       assert.deepEqual(overview.gridPos, {h: 12, w: 12, x: 0, y: 0});
       assert.deepEqual(overview.options.sortBy, [{displayName: 'RAM %', desc: true}]);
       assert.deepEqual(overview.transformations[0], {id: 'joinByField', options: {byField: 'name', mode: 'outer'}});
-      for (const [column, width] of Object.entries({'Container': 300, 'RAM used': 100, 'RAM limit': 120, 'RAM %': 90, 'Swap used': 100})) {
+      for (const [column, width] of Object.entries({'Container': 300, 'RAM used': 100, 'RAM limit': 120, 'Swap used': 100})) {
         const override = overview.fieldConfig.overrides.find(field => field.matcher.options === column);
         assert.equal(override.properties.find(property => property.id === 'custom.width').value, width);
       }
       const percentage = overview.fieldConfig.overrides.find(override => override.matcher.options === 'RAM %');
+      assert.equal(percentage.properties.some(property => property.id === 'custom.width'), false);
       assert.equal(percentage.properties.find(property => property.id === 'unit').value, 'percent');
       assert.deepEqual(percentage.properties.find(property => property.id === 'thresholds').value.steps,
         [{color: 'green', value: null}, {color: 'orange', value: 80}, {color: 'red', value: 90}]);
