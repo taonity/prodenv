@@ -1,6 +1,6 @@
 services:
   certbot:
-    image: certbot/dns-cloudflare:v5.6.0
+    image: certbot/dns-cloudflare:v5.8.0
     restart: "no"
     volumes:
       - ./../data/certbot/letsencrypt:/etc/letsencrypt
