@@ -1,0 +1,100 @@
+{
+	"id": null, "uid": "mobile-project", "title": "Project resources", "schemaVersion": 39, "version": 1,
+	"tags": ["mobile", "production"], "timezone": "browser", "editable": true, "refresh": "1m",
+	"time": {"from": "now-6h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+	"annotations": {"list": []},
+	"links": [
+		{"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
+		{"type": "link", "title": "sinair-llm-bot-prod", "url": "/d/mobile-overview", "keepTime": true},
+		{"type": "link", "title": "fullstack-starter-prod", "url": "/d/mobile-project?var-project=fullstack-starter-prod", "keepTime": true},
+		{"type": "link", "title": "gentool-data-viewer-prod", "url": "/d/mobile-project?var-project=gentool-data-viewer-prod", "keepTime": true},
+		{"type": "link", "title": "artist-insight-service-prod", "url": "/d/mobile-project?var-project=artist-insight-service-prod", "keepTime": true}
+	],
+	"templating": {"list": [{
+		"name": "project", "label": "Project", "hide": 2, "type": "query", "datasource": {"type": "prometheus", "uid": "Prometheus"},
+		"query": {"query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",container_label_com_docker_compose_project=~\".*-prod\"}, container_label_com_docker_compose_project)", "refId": "StandardVariableQuery"},
+		"current": {"text": "fullstack-starter-prod", "value": "fullstack-starter-prod"}, "refresh": 1, "sort": 1, "multi": false, "includeAll": false, "options": []
+	}, {
+		"name": "container", "type": "query", "hide": 2,
+		"datasource": {"type": "prometheus", "uid": "Prometheus"},
+		"query": {"query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"}, name)", "refId": "StandardVariableQuery"},
+		"regex": "/^(?<value>(?:${project:regex}[-_])?(?<text>.+))$/",
+		"current": {"text": ["All"], "value": ["$__all"]}, "multi": true, "includeAll": true, "allValue": ".*", "refresh": 2, "sort": 1, "options": []
+	}]},
+	"panels": [
+		{
+			"id": 1, "type": "stat", "title": "${project}", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Only the selected production project. CPU is a share of total host capacity; RAM is combined container working set. Resource presence does not prove application readiness.",
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 1, "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [
+				{"matcher": {"id": "byName", "options": "CPU / host"}, "properties": [{"id": "unit", "value": "percent"}]},
+				{"matcher": {"id": "byName", "options": "RAM"}, "properties": [{"id": "unit", "value": "bytes"}]},
+				{"matcher": {"id": "byName", "options": "Containers"}, "properties": [{"id": "decimals", "value": 0}]}
+			]},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "100 * sum(max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m]))) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "instant": true},
+				{"refId": "B", "expr": "sum(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"})) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "RAM", "instant": true},
+				{"refId": "C", "expr": "count(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"})) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "Containers", "instant": true}
+			]
+		},
+		{
+			"id": 3, "type": "timeseries", "title": "Project / CPU and RAM", "gridPos": {"x": 0, "y": 3, "w": 24, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Only the selected project's usage. CPU and RAM use total host capacity as the denominator, not container quotas; the axis scales to observed usage.",
+			"fieldConfig": {"defaults": {"unit": "percent", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+			"targets": [
+				{"refId": "A", "expr": "100 * sum(max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m]))) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true},
+				{"refId": "B", "expr": "100 * sum(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\"${project:regex}\"})) / scalar(sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM / host", "range": true}
+			]
+		},
+		{
+			"id": 5, "type": "marcusolsson-dynamictext-panel", "title": "Containers", "gridPos": {"x": 0, "y": 9, "w": 24, "h": 8},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Container: ${container:raw}. RAM used is working set, excluding inactive file cache. RAM limit is a cap, not reserved memory. No cap means no effective cap below host RAM; missing limits are Unknown. RAM % is N/A without a usable limit.",
+			"fieldConfig": {"defaults": {}, "overrides": []},
+			"options": {
+				"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [], "afterRender": "",
+				"defaultContent": "<div class=\"container-empty\">Container metrics unavailable</div>",
+				"content": "<div class=\"container-pairs\">{{#each data}}<article class=\"container-card\"><h3 title=\"{{name}}\">{{containerName name}}</h3><dl><dt>RAM used</dt><dd>{{memory ramUsed}}</dd><dt>RAM limit</dt><dd>{{memoryLimit ramLimit}}</dd><dt>RAM %</dt><dd class=\"{{pressure ramPercent}}\">{{percentage ramPercent}}</dd><dt>CPU / host</dt><dd>{{percentage cpu}}</dd></dl></article>{{/each}}</div>",
+				"helpers": "const valid = value => typeof value === 'number' && Number.isFinite(value);\nconst memory = value => !valid(value) ? 'Unknown' : value >= 1073741824 ? (value / 1073741824).toFixed(1) + ' GiB' : (value / 1048576).toFixed(0) + ' MiB';\ncontext.handlebars.registerHelper('containerName', value => String(value || 'Unknown').replace(/^.+-prod[-_]/, ''));\ncontext.handlebars.registerHelper('memory', memory);\ncontext.handlebars.registerHelper('memoryLimit', value => value === 0 ? 'No cap' : memory(value));\ncontext.handlebars.registerHelper('percentage', value => valid(value) ? value.toFixed(1) + '%' : 'N/A');\ncontext.handlebars.registerHelper('pressure', value => !valid(value) ? 'load-unknown' : value >= 90 ? 'load-critical' : value >= 80 ? 'load-warning' : 'load-normal');",
+				"styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .container-pairs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; box-sizing: border-box; width: 100%; } .container-card { min-width: 0; padding: 7px; border: 1px solid rgba(127,127,127,.3); border-radius: 4px; background: rgba(127,127,127,.06); } .container-card h3 { margin: 0 0 5px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; } .container-card dl { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; margin: 0; } .container-card dt, .container-card dd { margin: 0; min-width: 0; line-height: 18px; letter-spacing: 0; } .container-card dt { font-size: 11px; opacity: .8; } .container-card dd { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .load-normal { color: #73bf69; } .load-warning { color: #ffb357; } .load-critical { color: #f2495c; } .load-unknown { opacity: .65; } .container-empty { padding: 12px; }"
+			},
+			"transformations": [
+				{"id": "joinByField", "options": {"byField": "name", "mode": "outer"}},
+				{"id": "organize", "options": {"excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true}, "renameByName": {"Value #A": "ramUsed", "Value #C": "ramLimit", "Value #D": "ramPercent", "Value #B": "cpu"}}}
+			],
+			"targets": [
+				{"refId": "A", "expr": "max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}) and on() (min(up{job=\"cadvisor\"}) == 1)", "format": "table", "instant": true},
+				{"refId": "C", "expr": "(max by(name) ((container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) or (0 * (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} <= 0 or container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} >= scalar(node_memory_MemTotal_bytes{job=\"node\"})))) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)) or on(name) (max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}) * 0 / 0)", "format": "table", "instant": true},
+				{"refId": "D", "expr": "(100 * max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}) / max by(name) (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)) or on(name) (max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}) * 0 / 0)", "format": "table", "instant": true},
+				{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "format": "table", "instant": true}
+			]
+		},
+		{
+			"id": 6, "type": "row", "title": "Diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 17, "w": 24, "h": 1},
+			"panels": [
+				{
+					"id": 7, "type": "timeseries", "title": "RAM / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 18, "w": 24, "h": 6},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "Per-container working-set memory and its configured finite cap. No limit line is drawn when the cap is missing or effectively unlimited.",
+					"fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": [{"matcher": {"id": "byName", "options": "RAM limit"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}, {"id": "custom.fillOpacity", "value": 0}, {"id": "custom.lineStyle", "value": {"fill": "dash"}}]}]},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+					"targets": [
+						{"refId": "A", "expr": "max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "RAM used", "range": true},
+						{"refId": "C", "expr": "max by(name) (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM limit", "range": true}
+					]
+				},
+				{
+					"id": 8, "type": "timeseries", "title": "CPU / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 24, "w": 24, "h": 6},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "This container's CPU usage as a percentage of the whole host's CPU capacity, using a five-minute rate.",
+					"fieldConfig": {"defaults": {"unit": "percent", "min": 0, "color": {"mode": "fixed", "fixedColor": "blue"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+					"options": {"legend": {"showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+					"targets": [{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true}]
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,193 @@
+{
+  "id": null,
+  "uid": "mobile-overview",
+  "title": "sinair-llm-bot-prod",
+  "description": "Production bot message counts, spending and project resource usage. Message totals cover the last 24 hours. Server-wide information is on Server.",
+  "tags": ["mobile", "production", "sinair"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+  "templating": {"list": [{
+    "name": "container", "type": "query", "hide": 2,
+    "datasource": {"type": "prometheus", "uid": "Prometheus"},
+    "query": {"query": "label_values(container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}, name)", "refId": "StandardVariableQuery"},
+    "regex": "/^(?<value>(?:sinair-llm-bot-prod[-_])?(?<text>.+))$/",
+    "current": {"text": ["All"], "value": ["$__all"]}, "multi": true, "includeAll": true, "allValue": ".*", "refresh": 2, "sort": 1, "options": []
+  }]},
+  "annotations": {"list": []},
+  "links": [
+    {"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
+    {"type": "link", "title": "sinair-llm-bot-prod", "url": "/d/mobile-overview", "keepTime": true},
+    {"type": "link", "title": "fullstack-starter-prod", "url": "/d/mobile-project?var-project=fullstack-starter-prod", "keepTime": true},
+    {"type": "link", "title": "gentool-data-viewer-prod", "url": "/d/mobile-project?var-project=gentool-data-viewer-prod", "keepTime": true},
+    {"type": "link", "title": "artist-insight-service-prod", "url": "/d/mobile-project?var-project=artist-insight-service-prod", "keepTime": true}
+  ],
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Bot status", "gridPos": {"x": 0, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Collector is ready only while its heartbeat is fresh and all configured rooms are joined. Bot mode distinguishes intentional pauses from missing telemetry.",
+      "fieldConfig": {"defaults": {"noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "gray"}, "mappings": [{"type": "value", "options": {"0": {"text": "Offline", "color": "red"}, "1": {"text": "Ready", "color": "green"}, "2": {"text": "Paused", "color": "orange"}, "3": {"text": "Disabled", "color": "orange"}}}]}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [
+        {"refId": "A", "expr": "max(up{job=\"sinair-llm-bot-prod\"})", "legendFormat": "Backend", "instant": true},
+        {"refId": "B", "expr": "(max(time() - bot_collector_heartbeat_timestamp_seconds{job=\"sinair-llm-bot-prod\"} < bool 120) * (max(bot_collector_joined_rooms{job=\"sinair-llm-bot-prod\"}) == bool max(bot_state_configured_rooms{job=\"sinair-llm-bot-prod\"}))) and on() (max(up{job=\"sinair-llm-bot-prod\"}) == 1)", "legendFormat": "Collector", "instant": true},
+        {"refId": "C", "expr": "((1 + (max(bot_state_active_rooms{job=\"sinair-llm-bot-prod\"}) == bool 0)) * max(bot_state_enabled{job=\"sinair-llm-bot-prod\"}) + 3 * (max(bot_state_enabled{job=\"sinair-llm-bot-prod\"}) == bool 0)) and on() (max(time() - bot_metrics_snapshot_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) < 120) and on() (max(up{job=\"sinair-llm-bot-prod\"}) == 1)", "legendFormat": "Bot mode", "instant": true}
+      ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "LLM spend / UTC", "gridPos": {"x": 6, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Dedicated-key OpenRouter usage, not hosting or separately billed services. Calendar day and month are UTC. Values disappear if the last successful poll is over 15 minutes old.",
+      "fieldConfig": {"defaults": {"unit": "currencyUSD", "decimals": 2, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [
+        {"refId": "A", "expr": "sum(bot_llm_spend_usd{job=\"sinair-llm-bot-prod\",source=\"openrouter\",period=\"day\"}) and on() (max(time() - bot_llm_usage_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) < 900) and on() (max(up{job=\"sinair-llm-bot-prod\"}) == 1)", "legendFormat": "Today", "instant": true},
+        {"refId": "B", "expr": "sum(bot_llm_spend_usd{job=\"sinair-llm-bot-prod\",source=\"openrouter\",period=\"month\"}) and on() (max(time() - bot_llm_usage_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) < 900) and on() (max(up{job=\"sinair-llm-bot-prod\"}) == 1)", "legendFormat": "This month", "instant": true}
+      ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Chat messages / last 24h", "gridPos": {"x": 12, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Counts over the last 24 hours of observed traffic, not pending work. Human messages exclude history replays, duplicates, this bot's echoes and sleeping-room messages. Bot replies are collector-acknowledged. Prometheus estimates counter increases between scrapes; missing data is unknown, not zero.",
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [
+        {"refId": "A", "expr": "sum(increase(bot_chat_human_messages_total{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Human messages", "instant": true},
+        {"refId": "B", "expr": "sum(increase(bot_replies_acknowledged_total{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Bot replies", "instant": true}
+      ]
+    },
+    {
+      "id": 15, "type": "stat", "title": "Project / current", "gridPos": {"x": 18, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Only sinair-llm-bot-prod containers. CPU is a share of host capacity; RAM is their combined working set.",
+      "fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 1, "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [
+        {"matcher": {"id": "byName", "options": "CPU / host"}, "properties": [{"id": "unit", "value": "percent"}]},
+        {"matcher": {"id": "byName", "options": "RAM"}, "properties": [{"id": "unit", "value": "bytes"}]},
+        {"matcher": {"id": "byName", "options": "Containers"}, "properties": [{"id": "decimals", "value": 0}]}
+      ]},
+      "options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [
+        {"refId": "A", "expr": "100 * sum(max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}[5m]))) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "instant": true},
+        {"refId": "B", "expr": "sum(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"})) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "RAM", "instant": true},
+        {"refId": "C", "expr": "count(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"})) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "Containers", "instant": true}
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "CPU and RAM", "gridPos": {"x": 0, "y": 3, "w": 24, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Only Sinair production containers. CPU and RAM are shares of total host capacity, not whole-server usage or percentages of container limits.",
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"refId": "A", "expr": "100 * sum(max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}[5m]))) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true},
+        {"refId": "B", "expr": "100 * sum(max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"})) / scalar(sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM / host", "range": true}
+      ]
+    },
+    {
+      "id": 16, "type": "marcusolsson-dynamictext-panel", "title": "Containers", "gridPos": {"x": 0, "y": 9, "w": 24, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Container: ${container:raw}. RAM used is working set, excluding inactive file cache. RAM limit is a cap, not reserved memory. No cap means no effective cap below host RAM; missing limits are Unknown. RAM % is N/A without a usable limit.",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {
+        "renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [], "afterRender": "",
+        "defaultContent": "<div class=\"container-empty\">Container metrics unavailable</div>",
+        "content": "<div class=\"container-pairs\">{{#each data}}<article class=\"container-card\"><h3 title=\"{{name}}\">{{containerName name}}</h3><dl><dt>RAM used</dt><dd>{{memory ramUsed}}</dd><dt>RAM limit</dt><dd>{{memoryLimit ramLimit}}</dd><dt>RAM %</dt><dd class=\"{{pressure ramPercent}}\">{{percentage ramPercent}}</dd><dt>CPU / host</dt><dd>{{percentage cpu}}</dd></dl></article>{{/each}}</div>",
+        "helpers": "const valid = value => typeof value === 'number' && Number.isFinite(value);\nconst memory = value => !valid(value) ? 'Unknown' : value >= 1073741824 ? (value / 1073741824).toFixed(1) + ' GiB' : (value / 1048576).toFixed(0) + ' MiB';\ncontext.handlebars.registerHelper('containerName', value => String(value || 'Unknown').replace(/^.+-prod[-_]/, ''));\ncontext.handlebars.registerHelper('memory', memory);\ncontext.handlebars.registerHelper('memoryLimit', value => value === 0 ? 'No cap' : memory(value));\ncontext.handlebars.registerHelper('percentage', value => valid(value) ? value.toFixed(1) + '%' : 'N/A');\ncontext.handlebars.registerHelper('pressure', value => !valid(value) ? 'load-unknown' : value >= 90 ? 'load-critical' : value >= 80 ? 'load-warning' : 'load-normal');",
+        "styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .container-pairs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 8px; box-sizing: border-box; width: 100%; } .container-card { min-width: 0; padding: 7px; border: 1px solid rgba(127,127,127,.3); border-radius: 4px; background: rgba(127,127,127,.06); } .container-card h3 { margin: 0 0 5px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; } .container-card dl { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 6px; margin: 0; } .container-card dt, .container-card dd { margin: 0; min-width: 0; line-height: 18px; letter-spacing: 0; } .container-card dt { font-size: 11px; opacity: .8; } .container-card dd { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .load-normal { color: #73bf69; } .load-warning { color: #ffb357; } .load-critical { color: #f2495c; } .load-unknown { opacity: .65; } .container-empty { padding: 12px; }"
+      },
+      "transformations": [
+        {"id": "joinByField", "options": {"byField": "name", "mode": "outer"}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true}, "renameByName": {"Value #A": "ramUsed", "Value #C": "ramLimit", "Value #D": "ramPercent", "Value #B": "cpu"}}}
+      ],
+      "targets": [
+        {"refId": "A", "expr": "max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}) and on() (min(up{job=\"cadvisor\"}) == 1)", "format": "table", "instant": true},
+        {"refId": "C", "expr": "(max by(name) ((container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) or (0 * (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} <= 0 or container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} >= scalar(node_memory_MemTotal_bytes{job=\"node\"})))) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)) or on(name) (max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}) * 0 / 0)", "format": "table", "instant": true},
+        {"refId": "D", "expr": "(100 * max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}) / max by(name) (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)) or on(name) (max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}) * 0 / 0)", "format": "table", "instant": true},
+        {"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "format": "table", "instant": true}
+      ]
+    },
+    {
+      "id": 9, "type": "row", "title": "Diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 17, "w": 24, "h": 1},
+      "panels": [
+        {
+          "id": 17, "type": "timeseries", "title": "RAM / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 18, "w": 24, "h": 6},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "Per-container working-set memory and its configured finite cap. No limit line is drawn when the cap is missing or effectively unlimited.",
+          "fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": [{"matcher": {"id": "byName", "options": "RAM limit"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}, {"id": "custom.fillOpacity", "value": 0}, {"id": "custom.lineStyle", "value": {"fill": "dash"}}]}]},
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"refId": "A", "expr": "max by(name) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "RAM used", "range": true},
+            {"refId": "C", "expr": "max by(name) (container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} > 0 and container_spec_memory_limit_bytes{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} < scalar(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM limit", "range": true}
+          ]
+        },
+        {
+          "id": 18, "type": "timeseries", "title": "CPU / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 24, "w": 24, "h": 6},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "This container's CPU usage as a percentage of the whole host's CPU capacity, using a five-minute rate.",
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "color": {"mode": "fixed", "fixedColor": "blue"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+          "options": {"legend": {"showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
+          "targets": [{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true}]
+        },
+        {
+          "id": 10, "type": "stat", "title": "Failed bot operations / 24h", "gridPos": {"x": 0, "y": 30, "w": 12, "h": 4},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "Reply handling: an error while deciding whether to answer, generating a reply or queuing it. Chat summaries: the LLM produced no conversation summary. These count failed attempts, including retries; intentional silence is not a failure. They do not measure answer quality or confirmed message delivery.",
+          "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "orange"}}, "overrides": []},
+          "options": {"colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "orientation": "vertical", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+          "targets": [
+            {"refId": "A", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"failed\"}[24h]))", "legendFormat": "Reply handling", "instant": true},
+            {"refId": "B", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"summary_failed\"}[24h]))", "legendFormat": "Chat summaries", "instant": true}
+          ]
+        },
+        {
+          "id": 11, "type": "stat", "title": "Reply time / p95 last 24h", "gridPos": {"x": 12, "y": 30, "w": 12, "h": 4},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "Time from receiving the trigger message to collector acknowledgment, including deliberate waiting. p95 estimates a duration within which 95% of measured replies were acknowledged; it is not the average or an exact chat-server delivery time. Interpret it with the sample count.",
+          "fieldConfig": {"defaults": {"unit": "s", "noValue": "No samples", "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [{"matcher": {"id": "byName", "options": "Replies measured"}, "properties": [{"id": "unit", "value": "short"}, {"id": "decimals", "value": 0}]}]},
+          "options": {"graphMode": "none", "textMode": "value_and_name", "wideLayout": false, "orientation": "vertical", "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+          "targets": [
+            {"refId": "A", "expr": "histogram_quantile(0.95, sum by(le) (increase(bot_reply_ack_latency_seconds_bucket{job=\"sinair-llm-bot-prod\"}[24h])))", "legendFormat": "p95", "instant": true},
+            {"refId": "B", "expr": "sum(increase(bot_reply_ack_latency_seconds_count{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Replies measured", "instant": true}
+          ]
+        },
+        {
+          "id": 12, "type": "stat", "title": "Telemetry age", "gridPos": {"x": 0, "y": 34, "w": 24, "h": 3},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "fieldConfig": {"defaults": {"unit": "dtdurations", "noValue": "Never", "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": []},
+          "options": {"colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "orientation": "vertical", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+          "targets": [
+            {"refId": "A", "expr": "time() - (max(bot_metrics_snapshot_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) > 0)", "legendFormat": "Bot state", "instant": true},
+            {"refId": "B", "expr": "time() - (max(bot_collector_heartbeat_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) > 0)", "legendFormat": "Collector", "instant": true},
+            {"refId": "C", "expr": "time() - (max(bot_llm_usage_timestamp_seconds{job=\"sinair-llm-bot-prod\"}) > 0)", "legendFormat": "Spending", "instant": true}
+          ]
+        },
+        {
+          "id": 14, "type": "table", "title": "Bot alerts", "gridPos": {"x": 0, "y": 37, "w": 24, "h": 6},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "minWidth": 45, "cellOptions": {"type": "auto"}}}, "overrides": [
+            {"matcher": {"id": "byName", "options": "Alert"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {
+              "BotMetricsUnavailable": {"text": "Bot offline"},
+              "BotStateStale": {"text": "Bot state stale"},
+              "BotCollectorUnavailable": {"text": "Chat connection lost"},
+              "BotRoomsDisconnected": {"text": "Chat rooms missing"},
+              "BotSenderDisabled": {"text": "Sending disabled"},
+              "BotWorkStuck": {"text": "Bot work stalled"},
+              "BotPipelineFailing": {"text": "Repeated bot failures"},
+              "BotSpendingStale": {"text": "Spending data stale"}
+            }}]}]},
+            {"matcher": {"id": "byName", "options": "Severity"}, "properties": [{"id": "custom.width", "value": 70}]},
+            {"matcher": {"id": "byName", "options": "Demo"}, "properties": [{"id": "custom.width", "value": 65}]}
+          ]},
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "alertstate": true, "application": true, "environment": true, "service": true, "platform": true, "job": true, "instance": true, "image": true}, "indexByName": {"alertname": 0, "severity": 1, "demo": 2}, "renameByName": {"alertname": "Alert", "severity": "Severity", "name": "Container", "queue": "Queue", "demo": "Demo"}}}],
+          "targets": [{"refId": "A", "expr": "ALERTS{alertstate=\"firing\",alertname=~\"Bot.*\"}", "instant": true, "format": "table"}]
+        }
+      ]
+    }
+  ]
+}

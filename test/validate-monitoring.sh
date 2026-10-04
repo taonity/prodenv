@@ -1,0 +1,261 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+temporary="$(mktemp -d)"
+chmod 755 "$temporary"
+trap 'rm -rf "$temporary"' EXIT
+export METRICS_DIRECTORY="$temporary/metrics"
+
+sh -n backup/scripts/record-backup-metric.sh
+sh -n backup/scripts/verify-postgres-restore.sh
+sh backup/scripts/record-backup-metric.sh snapshot
+sh backup/scripts/record-backup-metric.sh integrity
+if sh backup/scripts/record-backup-metric.sh '../invalid' 2>/dev/null; then
+  echo 'Invalid metric operation was accepted.' >&2
+  exit 1
+fi
+for operation in snapshot integrity; do
+  grep -Eq "^prodenv_backup_last_success_timestamp_seconds\{operation=\"$operation\"\} [0-9]+$" "$METRICS_DIRECTORY/backup-$operation.prom"
+  docker run --rm -i --entrypoint promtool prom/prometheus:v2.47.1 check metrics < "$METRICS_DIRECTORY/backup-$operation.prom"
+done
+
+docker run --rm --entrypoint promtool \
+  -v "$PWD:/work:ro" -w /work \
+  prom/prometheus:v2.47.1 test rules test/monitoring-rules.test.yml
+docker run --rm --entrypoint promtool \
+  -v "$PWD/logging/prometheus:/etc/prometheus:ro" \
+  prom/prometheus:v2.47.1 check config /etc/prometheus/prometheus.yml
+
+export MONITORING_TEST_DIRECTORY="$temporary"
+node <<'NODE'
+const assert = require('assert').strict;
+const fs = require('fs');
+const path = require('path');
+for (const environment of ['prod', 'stage']) {
+  const config = fs.readFileSync(`nginx/nginx/conf.d/sinair-llm-bot-api-${environment}.conf`, 'utf8');
+  const blocked = new RegExp(config.match(/location ~ (.+) \{/)[1]);
+  for (const route of ['/actuator/prometheus', '/actuator/metrics', '/actuator/metrics/bot.llm.spend.usd', '/api/chat/outbound/collector-status']) assert(blocked.test(route));
+  for (const route of ['/actuator/health', '/api/chat/outbound', '/oauth2/authorization/google']) assert(!blocked.test(route));
+}
+const dashboard = JSON.parse(fs.readFileSync('logging/grafana/provisioning/dashboards/mobile-overview.json', 'utf8'));
+const flatten = panels => panels.flatMap(panel => [panel, ...flatten(panel.panels || [])]);
+const panels = flatten(dashboard.panels);
+assert.equal(dashboard.uid, 'mobile-overview');
+assert.equal(dashboard.schemaVersion, 39);
+assert.equal(dashboard.panels.filter(panel => panel.type === 'stat' && !panel.repeat).length, 4);
+assert.equal(dashboard.title, 'sinair-llm-bot-prod');
+assert(dashboard.panels.some(panel => panel.id === 15 && panel.type === 'stat'));
+assert(dashboard.panels.some(panel => panel.id === 16 && panel.type === 'marcusolsson-dynamictext-panel'));
+for (const panel of dashboard.panels.filter(panel => panel.type === 'stat' && !panel.repeat)) {
+  assert.equal(panel.options.orientation, 'vertical');
+  assert.equal(panel.gridPos.h, 3);
+}
+assert(!panels.some(panel => (panel.targets || []).some(target => /bot_queue_|node_filesystem_|node_memory_MemAvailable|prodenv_backup_/.test(target.expr))));
+assert.equal(dashboard.panels.filter(panel => panel.type === 'row').length, 1);
+assert(dashboard.panels.find(panel => panel.type === 'row').collapsed);
+assert.equal(new Set(panels.map(panel => panel.id)).size, panels.length);
+const rules = [];
+const mobileDashboards = ['mobile-overview', 'mobile-project', 'mobile-server'].map(name =>
+  JSON.parse(fs.readFileSync(`logging/grafana/provisioning/dashboards/${name}.json`, 'utf8')));
+const projectNames = ['sinair-llm-bot-prod', 'fullstack-starter-prod', 'gentool-data-viewer-prod', 'artist-insight-service-prod'];
+for (const mobile of mobileDashboards) {
+  assert.deepEqual(mobile.links.map(link => link.title), ['Server', ...projectNames]);
+  assert.deepEqual(mobile.links.map(link => link.url), ['/d/mobile-server', '/d/mobile-overview', ...projectNames.slice(1).map(name => `/d/mobile-project?var-project=${name}`)]);
+  assert((mobile.templating.list || []).every(variable => variable.hide === 2), 'Project navigation must not use a visible dropdown');
+  assert(mobile.links.every(link => link.keepTime));
+  assert.equal(new Set(flatten(mobile.panels).map(panel => panel.id)).size, flatten(mobile.panels).length);
+  for (const panel of flatten(mobile.panels)) {
+    if (panel.type === 'row') continue;
+    assert.equal(panel.datasource.uid, 'Prometheus');
+    if (panel.type === 'stat') assert.deepEqual(panel.options.reduceOptions.calcs, ['last']);
+    for (const target of panel.targets) {
+      assert(!target.expr.includes('stage'), 'Only production should be queried');
+      assert(!target.expr.includes('bot_queue_'), 'No pending-work counts on mobile dashboards');
+      if (mobile.uid !== 'mobile-server') {
+        assert(!/node_filesystem_|node_memory_MemAvailable|prodenv_backup_/.test(target.expr), 'Server-wide metrics belong on Server');
+        if (target.expr.includes('node_cpu_seconds_total')) assert(target.expr.includes('container_cpu_usage_seconds_total'), 'Only project CPU usage belongs on project views');
+      }
+      rules.push({record: `${mobile.uid.replace(/-/g, '_')}_${panel.id}_${target.refId}`, expr: target.expr.replace(/\$\{project:regex\}/g, 'sinair-llm-bot-prod').replace(/\$\{container:regex\}/g, '.*')});
+    }
+  }
+}
+const messages = panels.find(panel => panel.id === 4);
+const projectDashboard = mobileDashboards.find(mobile => mobile.uid === 'mobile-project');
+assert.equal(projectDashboard.templating.list[0].current.value, 'fullstack-starter-prod');
+assert.equal(messages.type, 'stat');
+assert.equal(messages.title, 'Chat messages / last 24h');
+assert.deepEqual(messages.targets.map(target => target.legendFormat), ['Human messages', 'Bot replies']);
+assert(messages.targets.every(target => target.instant && target.expr.includes('[24h]')));
+assert(!panels.filter(panel => panel.type === 'timeseries').some(panel => panel.targets.some(target => /bot_chat_human_messages|bot_replies_acknowledged/.test(target.expr))));
+const humanMessages = messages.targets[0].expr;
+const botReplies = messages.targets[1].expr;
+const failures = panels.find(panel => panel.id === 10);
+assert.deepEqual(failures.targets.map(target => target.legendFormat), ['Reply handling', 'Chat summaries']);
+const replyTime = panels.find(panel => panel.id === 11);
+assert.equal(replyTime.targets[1].legendFormat, 'Replies measured');
+assert(!panels.some(panel => /BYOK/.test(panel.title)));
+const spending = panels.find(panel => panel.id === 3).targets[0].expr;
+const containerTable = panels.find(panel => panel.id === 16);
+assert.equal(containerTable.gridPos.w, 24);
+assert.equal(containerTable.gridPos.x, 0);
+assert.equal(containerTable.type, 'marcusolsson-dynamictext-panel');
+assert.equal(containerTable.repeat, undefined);
+assert.equal(containerTable.options.renderMode, 'allRows');
+assert(containerTable.options.styles.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'));
+assert.deepEqual(containerTable.transformations[0], {id: 'joinByField', options: {byField: 'name', mode: 'outer'}});
+const helpers = {};
+require('vm').runInNewContext(containerTable.options.helpers, {context: {handlebars: {registerHelper: (name, helper) => { helpers[name] = helper; }}}});
+assert.equal(helpers.memory(512 * 1024 * 1024), '512 MiB');
+assert.equal(helpers.memoryLimit(0), 'No cap');
+assert.equal(helpers.memoryLimit(null), 'Unknown');
+assert.equal(helpers.memoryLimit(NaN), 'Unknown');
+assert.equal(helpers.percentage(75), '75.0%');
+assert.equal(helpers.percentage(NaN), 'N/A');
+assert.equal(helpers.pressure(95), 'load-critical');
+assert.equal(helpers.containerName('sinair-llm-bot-prod-backend-2'), 'backend-2');
+const containerQueries = Object.fromEntries(containerTable.targets.map(target => [target.refId, target.expr.replace(/\$\{container:regex\}/g, '.*')]));
+const projectContainerTable = projectDashboard.panels.find(panel => panel.type === 'marcusolsson-dynamictext-panel');
+assert.equal(projectContainerTable.gridPos.w, 24);
+assert.equal(projectContainerTable.gridPos.x, 0);
+assert.equal(projectContainerTable.repeat, undefined);
+assert.deepEqual(projectContainerTable.options, containerTable.options);
+assert.deepEqual(projectContainerTable.transformations, containerTable.transformations);
+assert.deepEqual(projectContainerTable.fieldConfig, containerTable.fieldConfig);
+assert(fs.readFileSync('logging/grafana/docker-compose.yml', 'utf8').includes('marcusolsson-dynamictext-panel 6.2.0'));
+for (const target of projectContainerTable.targets) {
+  assert.equal(target.expr.replace(/=~"\$\{project:regex\}"/g, '="sinair-llm-bot-prod"').replace(/\$\{container:regex\}/g, '.*'), containerQueries[target.refId]);
+}
+for (const mobile of [dashboard, projectDashboard]) {
+  const variable = mobile.templating.list.find(variable => variable.name === 'container');
+  assert(variable.multi && variable.includeAll && variable.hide === 2);
+  assert(variable.query.query.includes('container_label_com_docker_compose_project'));
+  const containerNamePattern = new RegExp(variable.regex.slice(1, -1).replace(/\$\{project:regex\}/g, 'sinair-llm-bot-prod'));
+  for (const [name, text] of [['sinair-llm-bot-prod-backend-1', 'backend-1'], ['sinair-llm-bot-prod-backend-2', 'backend-2'], ['custom-container', 'custom-container']]) {
+    const match = containerNamePattern.exec(name);
+    assert.equal(match.groups.value, name);
+    assert.equal(match.groups.text, text);
+  }
+  assert(!mobile.panels.some(panel => panel.type === 'table'));
+  const history = mobile.panels.find(panel => panel.type === 'row' && panel.title === 'Diagnostics').panels.filter(panel => panel.repeat === 'container');
+  assert.equal(history.length, 2);
+  for (const panel of history) {
+    assert.equal(panel.type, 'timeseries');
+    assert.equal(panel.repeatDirection, 'v');
+    assert.equal(panel.gridPos.w, 24);
+    assert(panel.targets.every(target => target.range && target.expr.includes('name=~"${container:regex}"')));
+  }
+}
+const memoryHistory = panels.find(panel => panel.id === 17).targets;
+assert.equal(memoryHistory[0].expr.replace(/\$\{container:regex\}/g, '.*'), containerQueries.A);
+assert.equal(panels.find(panel => panel.id === 18).targets[0].expr.replace(/\$\{container:regex\}/g, '.*'), containerQueries.B);
+const memoryFixture = (name, used, limit) => [
+  {series: `container_memory_working_set_bytes{job="cadvisor",name="${name}",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}`, values: `${used}+0x30`},
+  ...(limit === undefined ? [] : [{series: `container_spec_memory_limit_bytes{job="cadvisor",name="${name}",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}`, values: `${limit}+0x30`}]),
+];
+fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-rules.json'), JSON.stringify({groups: [{name: 'dashboard', rules}]}));
+fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-tests.json'), JSON.stringify({
+  rule_files: [], evaluation_interval: '1m', tests: [
+    {interval: '1m', input_series: [
+      {series: 'up{job="cadvisor"}', values: '1+0x30'},
+      {series: 'up{job="node"}', values: '1+0x30'},
+      {series: 'node_memory_MemTotal_bytes{job="node"}', values: '8192+0x30'},
+      ...memoryFixture('bounded', 384, 512),
+      ...memoryFixture('replica', 128, 256),
+      ...memoryFixture('no-limit', 100, 0),
+      ...memoryFixture('host-limit', 200, 8192),
+      ...memoryFixture('unlimited-v1', 300, '9223372036854771712'),
+      ...memoryFixture('missing-limit', 400),
+    ], promql_expr_test: [
+      {expr: `(${containerQueries.C}) == (${containerQueries.C})`, eval_time: '30m', exp_samples: [
+        {labels: '{name="bounded"}', value: 512}, {labels: '{name="replica"}', value: 256},
+        {labels: '{name="no-limit"}', value: 0}, {labels: '{name="host-limit"}', value: 0}, {labels: '{name="unlimited-v1"}', value: 0},
+      ]},
+      {expr: `(${containerQueries.D}) == (${containerQueries.D})`, eval_time: '30m', exp_samples: [
+        {labels: '{name="bounded"}', value: 75}, {labels: '{name="replica"}', value: 50},
+      ]},
+      {expr: 'count(' + containerQueries.A + ')', eval_time: '30m', exp_samples: [{labels: '{}', value: 6}]},
+      {expr: `count((${containerQueries.C}) != (${containerQueries.C}))`, eval_time: '30m', exp_samples: [{labels: '{}', value: 1}]},
+      {expr: `count((${containerQueries.D}) != (${containerQueries.D}))`, eval_time: '30m', exp_samples: [{labels: '{}', value: 4}]},
+    ]},
+    {interval: '1m', input_series: [
+      ...[['5', 10], ['15', 60], ['30', 95], ['60', 100], ['120', 100], ['300', 100], ['900', 100], ['+Inf', 100]].map(([le, count]) => ({
+        series: `bot_reply_ack_latency_seconds_bucket{job="sinair-llm-bot-prod",le="${le}"}`,
+        values: `0 ${count}+0x29`,
+      })),
+      {series: 'bot_reply_ack_latency_seconds_count{job="sinair-llm-bot-prod"}', values: '0 100+0x29'},
+      {series: 'bot_pipeline_runs_total{job="sinair-llm-bot-prod",outcome="failed"}', values: '0 3+0x29'},
+      {series: 'bot_pipeline_runs_total{job="sinair-llm-bot-prod",outcome="summary_failed"}', values: '0 1+0x29'},
+    ], promql_expr_test: [
+      {expr: replyTime.targets[0].expr, eval_time: '30m', exp_samples: [{labels: '{}', value: 30}]},
+      {expr: replyTime.targets[1].expr, eval_time: '30m', exp_samples: [{labels: '{}', value: 100}]},
+      {expr: failures.targets[0].expr, eval_time: '30m', exp_samples: [{labels: '{}', value: 3}]},
+      {expr: failures.targets[1].expr, eval_time: '30m', exp_samples: [{labels: '{}', value: 1}]},
+    ]},
+    {interval: '1m', input_series: [], promql_expr_test: [
+      {expr: humanMessages, eval_time: '30m', exp_samples: []},
+      {expr: botReplies, eval_time: '30m', exp_samples: []},
+    ]},
+    {interval: '1m', input_series: [
+      {series: 'bot_chat_human_messages_total{job="sinair-llm-bot-prod"}', values: '0+10x10 0+10x19'},
+    ], promql_expr_test: [{expr: humanMessages, eval_time: '30m', exp_samples: [{labels: '{}', value: 290}]}]},
+    {interval: '1m', input_series: [
+      {series: 'bot_chat_human_messages_total{job="sinair-llm-bot-prod"}', values: '0+10x30'},
+      {series: 'bot_replies_acknowledged_total{job="sinair-llm-bot-prod"}', values: '0+1x30'},
+    ], promql_expr_test: [
+      {expr: humanMessages, eval_time: '30m', exp_samples: [{labels: '{}', value: 300}]},
+      {expr: botReplies, eval_time: '30m', exp_samples: [{labels: '{}', value: 30}]},
+    ]},
+    {interval: '1m', input_series: [
+      {series: 'bot_chat_human_messages_total{job="sinair-llm-bot-prod"}', values: '0+0x30'},
+      {series: 'bot_replies_acknowledged_total{job="sinair-llm-bot-prod"}', values: '0+0x30'},
+      {series: 'bot_llm_spend_usd{job="sinair-llm-bot-prod",source="openrouter",period="day"}', values: '12+0x30'},
+      {series: 'bot_llm_usage_timestamp_seconds{job="sinair-llm-bot-prod"}', values: '1+0x30'},
+      {series: 'up{job="sinair-llm-bot-prod"}', values: '1+0x30'},
+    ], promql_expr_test: [
+      {expr: humanMessages, eval_time: '30m', exp_samples: [{labels: '{}', value: 0}]},
+      {expr: botReplies, eval_time: '30m', exp_samples: [{labels: '{}', value: 0}]},
+      {expr: spending, eval_time: '30m', exp_samples: []},
+    ]},
+  ],
+}));
+console.log(`Dashboards: ${mobileDashboards.length} consistent views, ${rules.length} production-only queries`);
+if (process.env.MONITORING_PREVIEW_URL) {
+  const http = require('http');
+  const fetchDashboard = uid => new Promise((resolve, reject) => {
+    const request = http.get(`${process.env.MONITORING_PREVIEW_URL}/api/dashboards/uid/${uid}`, response => {
+      let body = '';
+      response.on('data', chunk => { body += chunk; });
+      response.on('error', reject);
+      response.on('end', () => {
+        try {
+          assert.equal(response.statusCode, 200);
+          resolve(JSON.parse(body).dashboard);
+        } catch (error) { reject(error); }
+      });
+    });
+    request.on('error', reject);
+    request.setTimeout(5000, () => request.destroy(new Error('Preview request timed out')));
+  });
+  const contract = dashboard => ({
+    title: dashboard.title,
+    links: dashboard.links.map(link => ({title: link.title, url: link.url})),
+    panels: flatten(dashboard.panels).map(panel => ({
+      id: panel.id, title: panel.title, type: panel.type, gridPos: panel.gridPos,
+      cardTemplate: panel.type === 'marcusolsson-dynamictext-panel' ? panel.options.content : undefined,
+      cardStyles: panel.type === 'marcusolsson-dynamictext-panel' ? panel.options.styles : undefined,
+      targets: (panel.targets || []).map(target => ({expr: target.expr, legendFormat: target.legendFormat})),
+    })),
+  });
+  Promise.all(mobileDashboards.map(async source => {
+    assert.deepEqual(contract(await fetchDashboard(source.uid)), contract(source), `${source.uid}: preview differs from workspace`);
+  })).then(() => console.log('Live Grafana matches all workspace dashboards.'))
+    .catch(error => { console.error(error); process.exitCode = 1; });
+}
+NODE
+docker run --rm --entrypoint promtool -v "$temporary:/checks:ro" \
+  prom/prometheus:v2.47.1 check rules /checks/dashboard-rules.json
+docker run --rm --entrypoint promtool -v "$temporary:/checks:ro" \
+  prom/prometheus:v2.47.1 test rules /checks/dashboard-tests.json
+
+echo 'Backup metric publication and monitoring rules passed.'

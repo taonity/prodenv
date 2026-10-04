@@ -1,0 +1,92 @@
+{
+	"id": null, "uid": "mobile-server", "title": "Server", "schemaVersion": 39, "version": 1,
+	"tags": ["mobile", "production"], "timezone": "browser", "editable": true, "refresh": "1m",
+	"time": {"from": "now-6h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+	"templating": {"list": []}, "annotations": {"list": []},
+	"links": [
+		{"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
+		{"type": "link", "title": "sinair-llm-bot-prod", "url": "/d/mobile-overview", "keepTime": true},
+		{"type": "link", "title": "fullstack-starter-prod", "url": "/d/mobile-project?var-project=fullstack-starter-prod", "keepTime": true},
+		{"type": "link", "title": "gentool-data-viewer-prod", "url": "/d/mobile-project?var-project=gentool-data-viewer-prod", "keepTime": true},
+		{"type": "link", "title": "artist-insight-service-prod", "url": "/d/mobile-project?var-project=artist-insight-service-prod", "keepTime": true}
+	],
+	"panels": [
+		{
+			"id": 1, "type": "stat", "title": "Server / current", "gridPos": {"x": 0, "y": 0, "w": 8, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"fieldConfig": {"defaults": {"unit": "percent", "decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "instant": true},
+				{"refId": "B", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "instant": true},
+				{"refId": "C", "expr": "100 * min((node_filesystem_avail_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"} / node_filesystem_size_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) and on(instance,device,mountpoint) (node_filesystem_readonly{job=\"node\"} == 0)) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Disk free", "instant": true}
+			]
+		},
+		{
+			"id": 2, "type": "stat", "title": "Monitoring", "gridPos": {"x": 8, "y": 0, "w": 8, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [
+				{"matcher": {"id": "byRegexp", "options": "^(Host|Containers)$"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Offline", "color": "red"}, "1": {"text": "Ready", "color": "green"}}}]}]},
+				{"matcher": {"id": "byName", "options": "Alerts"}, "properties": [{"id": "color", "value": {"mode": "thresholds"}}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}]}
+			]},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "min(up{job=\"node\"})", "legendFormat": "Host", "instant": true},
+				{"refId": "B", "expr": "min(up{job=\"cadvisor\"})", "legendFormat": "Containers", "instant": true},
+				{"refId": "C", "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)", "legendFormat": "Alerts", "instant": true}
+			]
+		},
+		{
+			"id": 6, "type": "stat", "title": "Backup evidence", "gridPos": {"x": 16, "y": 0, "w": 8, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Last successful all-project snapshot and dump-integrity check across the host. These do not prove a full database restore; missing evidence is not success.",
+			"fieldConfig": {"defaults": {"unit": "dtdurations", "noValue": "Not recorded", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Full restore"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Unverified", "color": "orange"}}}]}]}]},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 16}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "time() - max(prodenv_backup_last_success_timestamp_seconds{job=\"node\",operation=\"snapshot\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Snapshot", "instant": true},
+				{"refId": "B", "expr": "time() - max(prodenv_backup_last_success_timestamp_seconds{job=\"node\",operation=\"integrity\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Integrity", "instant": true},
+				{"refId": "C", "expr": "vector(0)", "legendFormat": "Full restore", "instant": true}
+			]
+		},
+		{
+			"id": 3, "type": "table", "title": "Production projects", "gridPos": {"x": 0, "y": 3, "w": 12, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Production projects discovered from cAdvisor. CPU is a share of host capacity; RAM is working set. Resource presence does not prove application health.",
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "custom": {"minWidth": 50, "cellOptions": {"type": "auto"}}}, "overrides": [
+				{"matcher": {"id": "byName", "options": "RAM"}, "properties": [{"id": "unit", "value": "bytes"}, {"id": "decimals", "value": 1}, {"id": "custom.width", "value": 85}]},
+				{"matcher": {"id": "byName", "options": "CPU"}, "properties": [{"id": "unit", "value": "percent"}, {"id": "decimals", "value": 1}, {"id": "custom.width", "value": 65}]}
+			]},
+			"options": {"showHeader": true, "cellHeight": "sm", "sortBy": [{"displayName": "RAM", "desc": true}]},
+			"transformations": [
+				{"id": "joinByField", "options": {"byField": "container_label_com_docker_compose_project", "mode": "outer"}},
+				{"id": "organize", "options": {"excludeByName": {"Time": true, "Time 1": true, "Time 2": true}, "indexByName": {"container_label_com_docker_compose_project": 0, "Value #A": 1, "Value #B": 2}, "renameByName": {"container_label_com_docker_compose_project": "Project", "Value #A": "RAM", "Value #B": "CPU"}}}
+			],
+			"targets": [
+				{"refId": "A", "expr": "sum by(container_label_com_docker_compose_project) (max by(name,container_label_com_docker_compose_project) (container_memory_working_set_bytes{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\".*-prod\"})) and on() (min(up{job=\"cadvisor\"}) == 1)", "instant": true, "format": "table"},
+				{"refId": "B", "expr": "100 * sum by(container_label_com_docker_compose_project) (max by(name,container_label_com_docker_compose_project) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name!=\"\",container_label_com_docker_compose_project=~\".*-prod\"}[5m]))) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"}
+			]
+		},
+		{
+			"id": 4, "type": "timeseries", "title": "Server / CPU and RAM", "gridPos": {"x": 12, "y": 3, "w": 12, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"links": [{"title": "Host diagnostics", "url": "/d/rYdddlPWk", "keepTime": true}],
+			"fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+			"targets": [
+				{"refId": "A", "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "range": true},
+				{"refId": "B", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "range": true}
+			]
+		},
+		{
+			"id": 8, "type": "row", "title": "Alerts", "collapsed": true, "gridPos": {"x": 0, "y": 9, "w": 24, "h": 1},
+			"panels": [{
+				"id": 7, "type": "table", "title": "Firing alerts", "gridPos": {"x": 0, "y": 10, "w": 24, "h": 6},
+				"datasource": {"type": "prometheus", "uid": "Prometheus"},
+				"fieldConfig": {"defaults": {"custom": {"cellOptions": {"type": "auto"}}}, "overrides": []},
+				"options": {"showHeader": true, "cellHeight": "sm"},
+				"transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "alertstate": true, "application": true, "environment": true, "service": true, "platform": true, "job": true, "instance": true, "image": true}, "renameByName": {"alertname": "Alert", "severity": "Severity", "name": "Container"}}}],
+				"targets": [{"refId": "A", "expr": "ALERTS{alertstate=\"firing\"}", "instant": true, "format": "table"}]
+			}]
+		}
+	]
+}

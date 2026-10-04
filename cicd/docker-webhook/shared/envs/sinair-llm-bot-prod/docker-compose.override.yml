@@ -17,6 +17,8 @@ services:
 
   backend:
     restart: unless-stopped
+    environment:
+      APP_ENVIRONMENT: prod
     cpus: "${BACKEND_CPU_LIMIT:-1.00}"
     mem_limit: ${BACKEND_MEMORY_LIMIT:-768m}
     memswap_limit: ${BACKEND_MEMORY_SWAP_LIMIT:-1024m}

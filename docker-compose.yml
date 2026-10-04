@@ -231,6 +231,8 @@ volumes:
     name: prodenv-backup-staging
   backup-restore:
     name: prodenv-backup-restore
+  monitoring-textfile:
+    name: prodenv-monitoring-textfile
   minio-data:
   portainer-data:
   nginx-proxy-manager-data:

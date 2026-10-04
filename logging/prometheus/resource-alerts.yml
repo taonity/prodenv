@@ -1,6 +1,27 @@
 groups:
   - name: host-and-container-resources
     rules:
+      - alert: HostDiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs|nsfs"}
+           / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs|nsfs"} < 0.10)
+          and on(instance,device,mountpoint) (node_filesystem_readonly{job="node"} == 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} has less than 10% disk space available"
+          description: "Check database, backup staging and log growth before the filesystem fills."
+
+      - alert: HostCPUHigh
+        expr: 1 - avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m])) > 0.90
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU has been over 90% busy for 15 minutes"
+          description: "Inspect container CPU usage and bot latency; a brief burst does not trigger this alert."
+
       - alert: HostMemoryPressure
         expr: node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} < 0.10
         for: 10m

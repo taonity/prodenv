@@ -46,6 +46,14 @@
         },
         {
           "conditions": [
+            "CONDITION_SNAPSHOT_SUCCESS"
+          ],
+          "actionCommand": {
+            "command": "sh /hooks/record-backup-metric.sh snapshot"
+          }
+        },
+        {
+          "conditions": [
             "CONDITION_SNAPSHOT_SUCCESS",
             "CONDITION_ANY_ERROR"
           ],

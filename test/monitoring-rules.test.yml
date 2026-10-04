@@ -1,0 +1,56 @@
+rule_files:
+  - ../logging/prometheus/bot-alerts.yml
+evaluation_interval: 1m
+tests:
+  - name: quiet healthy bot does not alert
+    interval: 1m
+    input_series:
+      - series: up{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '0+60x30'
+      - series: bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '0+60x30'
+      - series: bot_llm_usage_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '0+60x30'
+      - series: bot_state_enabled{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_state_configured_rooms{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_state_active_rooms{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_collector_joined_rooms{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_collector_sending_enabled{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_queue_oldest_timestamp_seconds{job="sinair-llm-bot-prod",queue="inbox"}
+        values: '0+0x30'
+    promql_expr_test:
+      - expr: ALERTS{alertstate="firing"}
+        eval_time: 20m
+        exp_samples: []
+  - name: stale data and stuck work are actionable
+    interval: 1m
+    input_series:
+      - series: up{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '0+60x30'
+      - series: bot_state_enabled{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_llm_usage_timestamp_seconds{job="sinair-llm-bot-prod"}
+        values: '1+0x30'
+      - series: bot_queue_oldest_timestamp_seconds{job="sinair-llm-bot-prod",queue="outbound"}
+        values: '1+0x30'
+    promql_expr_test:
+      - expr: count by (alertname) (ALERTS{alertstate="firing"})
+        eval_time: 25m
+        exp_samples:
+          - labels: '{alertname="BotCollectorUnavailable"}'
+            value: 1
+          - labels: '{alertname="BotWorkStuck"}'
+            value: 1
+          - labels: '{alertname="BotSpendingStale"}'
+            value: 1

@@ -5,6 +5,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./resource-alerts.yml:/etc/prometheus/resource-alerts.yml:ro
+      - ./bot-alerts.yml:/etc/prometheus/bot-alerts.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'

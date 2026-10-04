@@ -28,3 +28,10 @@ docker run --rm \
   "/restore/$restore_directory"
 
 echo "Restore checksums verified successfully."
+
+docker run --rm \
+  --network none \
+  -v "${MONITORING_METRICS_VOLUME:-prodenv-monitoring-textfile}:/metrics" \
+  -v "$script_directory:/backup-scripts:ro" \
+  "$postgres_image" \
+  sh /backup-scripts/record-backup-metric.sh integrity

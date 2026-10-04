@@ -17,6 +17,7 @@ services:
       - backrest-tmp:/tmp
       - backup-staging:/userdata:ro
       - backup-restore:/restore
+      - monitoring-textfile:/metrics
       - ../scripts:/hooks:ro
     secrets:
       - source: backrest-repository-password

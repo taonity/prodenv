@@ -1,0 +1,117 @@
+groups:
+  - name: sinair-bot
+    rules:
+      - alert: BotMetricsUnavailable
+        expr: up{job="sinair-llm-bot-prod"} == 0 or absent(up{job="sinair-llm-bot-prod"})
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair bot metrics are unavailable"
+          description: "Check the backend, its internal metrics endpoint and the Prometheus target. Missing data is not a healthy bot."
+
+      - alert: BotStateStale
+        expr: |
+          (time() - bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"} > 120
+           or absent(bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"}))
+          and on(job) (up{job="sinair-llm-bot-prod"} == 1)
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair bot state is stale"
+          description: "The backend can be scraped but its queue/state snapshot is missing or no longer updating; inspect database connectivity."
+
+      - alert: BotCollectorUnavailable
+        expr: |
+          (time() - bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"} > 120
+           or absent(bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"}))
+          and on(job) (bot_state_enabled{job="sinair-llm-bot-prod"} == 1)
+          and on(job) (up{job="sinair-llm-bot-prod"} == 1)
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair collector is not reporting a live connection"
+          description: "Check the chat collector and WebSocket connection. No chat messages alone does not trigger this alert."
+
+      - alert: BotRoomsDisconnected
+        expr: |
+          (bot_collector_joined_rooms{job="sinair-llm-bot-prod"} < bot_state_configured_rooms{job="sinair-llm-bot-prod"})
+          and on(job) (time() - bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"} < 120)
+          and on(job) (bot_state_enabled{job="sinair-llm-bot-prod"} == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair collector has not joined all configured rooms"
+          description: "Check room membership and history warm-up; compare BOT_ROOMS with CHAT_ROOMS."
+
+      - alert: BotSenderDisabled
+        expr: |
+          (bot_collector_sending_enabled{job="sinair-llm-bot-prod"} == 0)
+          and on(job) (bot_state_active_rooms{job="sinair-llm-bot-prod"} > 0)
+          and on(job) (time() - bot_collector_heartbeat_timestamp_seconds{job="sinair-llm-bot-prod"} < 120)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair expects replies but collector sending is disabled"
+          description: "Check BOT_SEND_ENABLED on the production collector. Muted, sleeping or disabled rooms do not trigger this alert."
+
+      - alert: BotWorkStuck
+        expr: |
+          (time() - bot_queue_oldest_timestamp_seconds{job="sinair-llm-bot-prod"} > 900)
+          and (bot_queue_oldest_timestamp_seconds{job="sinair-llm-bot-prod"} > 0)
+          and on(job) (time() - bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"} < 120)
+          and on(job) (up{job="sinair-llm-bot-prod"} == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair {{ $labels.queue }} work has been waiting over 15 minutes"
+          description: "Inspect retained requests or PENDING/CLAIMED replies in the bot console. Inbox metrics exclude intentionally paused rooms."
+
+      - alert: BotPipelineFailing
+        expr: sum(increase(bot_pipeline_runs_total{job="sinair-llm-bot-prod",outcome=~"failed|summary_failed"}[15m])) >= 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair has repeated pipeline failures"
+          description: "At least three failed attempts in 15 minutes, possibly retries of the same request. Inspect pipeline traces before changing models or limits."
+
+      - alert: BotSpendingStale
+        expr: |
+          (time() - bot_llm_usage_timestamp_seconds{job="sinair-llm-bot-prod"} > 900
+           or absent(bot_llm_usage_timestamp_seconds{job="sinair-llm-bot-prod"}))
+          and on(job) (up{job="sinair-llm-bot-prod"} == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sinair spending data is unavailable or stale"
+          description: "Check APP_ENVIRONMENT=prod, OPENROUTER_USAGE_ENABLED and the dedicated key's usage API. Last known spend must not be treated as current."
+
+  - name: backup-evidence
+    rules:
+      - alert: BackupSnapshotOverdue
+        expr: |
+          (time() - prodenv_backup_last_success_timestamp_seconds{operation="snapshot",job="node"} > 93600
+           or absent(prodenv_backup_last_success_timestamp_seconds{operation="snapshot",job="node"}))
+          and on() (max(up{job="node"}) == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No recorded successful backup in the last 26 hours"
+          description: "Check the all-project-exports Backrest plan and its metric hook. An export on disk is not evidence of a completed remote snapshot."
+
+      - alert: BackupMetricsUnreadable
+        expr: node_textfile_scrape_error{job="node"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup metric files cannot be read"
+          description: "Inspect the shared monitoring-textfile volume and node-exporter textfile collector errors."
