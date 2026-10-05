@@ -153,9 +153,69 @@ const memoryFixture = (name, used, limit) => [
   {series: `container_memory_working_set_bytes{job="cadvisor",name="${name}",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}`, values: `${used}+0x30`},
   ...(limit === undefined ? [] : [{series: `container_spec_memory_limit_bytes{job="cadvisor",name="${name}",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}`, values: `${limit}+0x30`}]),
 ];
+const productionShares = mobileDashboards.find(mobile => mobile.uid === 'mobile-server').panels.find(panel => panel.id === 3);
+const alertPanel = panels.find(panel => panel.id === 14);
+const serverAlertPanel = flatten(mobileDashboards.find(mobile => mobile.uid === 'mobile-server').panels).find(panel => panel.id === 7);
+assert.equal(alertPanel.type, 'marcusolsson-dynamictext-panel');
+assert.equal(serverAlertPanel.type, 'marcusolsson-dynamictext-panel');
+assert.deepEqual(alertPanel.options, serverAlertPanel.options);
+assert(!mobileDashboards.some(mobile => flatten(mobile.panels).some(panel => panel.type === 'table')));
+assert(alertPanel.options.styles.includes('overflow-wrap: anywhere'));
+assert(!/ellipsis|line-clamp/.test(alertPanel.options.styles));
+assert(!alertPanel.options.content.includes('<table'));
+const alertHelpers = {};
+require('vm').runInNewContext(alertPanel.options.helpers, {context: {handlebars: {registerHelper: (name, helper) => { alertHelpers[name] = helper; }}}});
+assert.equal(alertHelpers.alertTitle('ContainerCPUThrottling'), 'Container CPU Throttling');
+assert.equal(alertHelpers.severityClass('critical'), 'severity-critical');
+assert.equal(alertHelpers.severityClass('unexpected'), 'severity-unknown');
+const longTarget = 'sinair-llm-bot-prod-backend-' + 'long-name-'.repeat(20);
+const details = alertHelpers.alertDetails({alertname: 'BotWorkStuck', severity: 'warning', name: longTarget, instance: 'backend:8080', demo: 'sample', Time: 10, Value: 1, 'Value #A': 1});
+assert.equal(details.length, 2);
+assert.equal(details[0].label, 'Container');
+assert.equal(details[0].value, longTarget);
+assert.equal(alertHelpers.alertRows([{alertname: 'Warning', severity: 'warning'}, {alertname: 'Critical', severity: 'critical'}])[0].alertname, 'Critical');
+assert.equal(alertHelpers.alertRows(null).length, 0);
+assert.equal(productionShares.type, 'marcusolsson-dynamictext-panel');
+assert.equal(productionShares.title, 'Production share of server');
+assert.equal(productionShares.gridPos.w, 24);
+assert(productionShares.options.styles.includes('grid-template-columns: repeat(2, minmax(0, 1fr))'));
+assert(productionShares.options.content.includes('{{project}}'));
+assert(productionShares.options.content.includes('CPU / server'));
+assert(productionShares.options.content.includes('RAM / server'));
+assert.deepEqual(productionShares.transformations[0], {id: 'joinByField', options: {byField: 'container_label_com_docker_compose_project', mode: 'outer'}});
+const projectHelpers = {};
+require('vm').runInNewContext(productionShares.options.helpers, {context: {handlebars: {registerHelper: (name, helper) => { projectHelpers[name] = helper; }}}});
+assert.equal(projectHelpers.share(25), '25.0%');
+assert.equal(projectHelpers.share(null), 'Unknown');
+assert.equal(projectHelpers.share(NaN), 'Unknown');
+assert.equal(projectHelpers.memory(512 * 1024 * 1024), '512 MiB');
 fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-rules.json'), JSON.stringify({groups: [{name: 'dashboard', rules}]}));
 fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-tests.json'), JSON.stringify({
   rule_files: [], evaluation_interval: '1m', tests: [
+    {interval: '1m', input_series: [
+      {series: 'up{job="cadvisor"}', values: '1+0x30'},
+      {series: 'up{job="node"}', values: '1+0x30'},
+      {series: 'node_memory_MemTotal_bytes{job="node"}', values: '4096+0x30'},
+      {series: 'node_cpu_seconds_total{job="node",mode="idle",cpu="0"}', values: '0+30x30'},
+      {series: 'node_cpu_seconds_total{job="node",mode="idle",cpu="1"}', values: '0+30x30'},
+      ...memoryFixture('app-1', 512, 1024),
+      ...memoryFixture('app-2', 512, 1024),
+      {series: 'container_memory_working_set_bytes{job="cadvisor",name="app-1",copy="duplicate",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}', values: '512+0x30'},
+      {series: 'container_cpu_usage_seconds_total{job="cadvisor",name="app-1",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}', values: '0+15x30'},
+      {series: 'container_cpu_usage_seconds_total{job="cadvisor",name="app-2",image="test",container_label_com_docker_compose_project="sinair-llm-bot-prod"}', values: '0+15x30'},
+      {series: 'container_memory_working_set_bytes{job="cadvisor",name="stage",image="test",container_label_com_docker_compose_project="sinair-llm-bot-stage"}', values: '2048+0x30'},
+      {series: 'container_memory_working_set_bytes{job="cadvisor",name="monitoring",image="test",container_label_com_docker_compose_project="prodenv"}', values: '1024+0x30'},
+      {series: 'container_cpu_usage_seconds_total{job="cadvisor",name="stage",image="test",container_label_com_docker_compose_project="sinair-llm-bot-stage"}', values: '0+30x30'},
+    ], promql_expr_test: [
+      {expr: productionShares.targets[0].expr, eval_time: '30m', exp_samples: [{labels: '{container_label_com_docker_compose_project="sinair-llm-bot-prod"}', value: 1024}]},
+      {expr: productionShares.targets[1].expr, eval_time: '30m', exp_samples: [{labels: '{container_label_com_docker_compose_project="sinair-llm-bot-prod"}', value: 25}]},
+      {expr: productionShares.targets[2].expr, eval_time: '30m', exp_samples: [{labels: '{container_label_com_docker_compose_project="sinair-llm-bot-prod"}', value: 25}]},
+    ]},
+    {interval: '1m', input_series: [
+      {series: 'up{job="cadvisor"}', values: '0+0x30'},
+      {series: 'up{job="node"}', values: '1+0x30'},
+      ...memoryFixture('stale', 512, 1024),
+    ], promql_expr_test: [{expr: productionShares.targets[0].expr, eval_time: '30m', exp_samples: []}]},
     {interval: '1m', input_series: [
       {series: 'up{job="cadvisor"}', values: '1+0x30'},
       {series: 'up{job="node"}', values: '1+0x30'},

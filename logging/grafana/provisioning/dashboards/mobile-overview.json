@@ -167,24 +167,17 @@
           ]
         },
         {
-          "id": 14, "type": "table", "title": "Bot alerts", "gridPos": {"x": 0, "y": 37, "w": 24, "h": 6},
+          "id": 14, "type": "marcusolsson-dynamictext-panel", "title": "Bot alerts", "gridPos": {"x": 0, "y": 37, "w": 24, "h": 8},
           "datasource": {"type": "prometheus", "uid": "Prometheus"},
-          "fieldConfig": {"defaults": {"custom": {"align": "auto", "minWidth": 45, "cellOptions": {"type": "auto"}}}, "overrides": [
-            {"matcher": {"id": "byName", "options": "Alert"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {
-              "BotMetricsUnavailable": {"text": "Bot offline"},
-              "BotStateStale": {"text": "Bot state stale"},
-              "BotCollectorUnavailable": {"text": "Chat connection lost"},
-              "BotRoomsDisconnected": {"text": "Chat rooms missing"},
-              "BotSenderDisabled": {"text": "Sending disabled"},
-              "BotWorkStuck": {"text": "Bot work stalled"},
-              "BotPipelineFailing": {"text": "Repeated bot failures"},
-              "BotSpendingStale": {"text": "Spending data stale"}
-            }}]}]},
-            {"matcher": {"id": "byName", "options": "Severity"}, "properties": [{"id": "custom.width", "value": 70}]},
-            {"matcher": {"id": "byName", "options": "Demo"}, "properties": [{"id": "custom.width", "value": 65}]}
-          ]},
-          "options": {"showHeader": true, "cellHeight": "sm"},
-          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "alertstate": true, "application": true, "environment": true, "service": true, "platform": true, "job": true, "instance": true, "image": true}, "indexByName": {"alertname": 0, "severity": 1, "demo": 2}, "renameByName": {"alertname": "Alert", "severity": "Severity", "name": "Container", "queue": "Queue", "demo": "Demo"}}}],
+          "description": "Firing alerts returned by Prometheus, with full names and identifying labels. An empty result is not proof that the bot is healthy. Sample alerts are explicitly marked.",
+          "fieldConfig": {"defaults": {}, "overrides": []},
+          "options": {
+            "renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [], "afterRender": "",
+            "defaultContent": "<div class=\"alert-empty\">No firing alerts returned</div>",
+            "content": "<div class=\"alert-list\">{{#each (alertRows data)}}<article class=\"alert-item {{severityClass severity}}\"><div class=\"alert-meta\"><span>{{severityText severity}}</span>{{#if demo}}<span class=\"alert-sample\">Sample alert</span>{{/if}}</div><h3>{{alertTitle alertname}}</h3><dl>{{#each (alertDetails this)}}<dt>{{label}}</dt><dd>{{value}}</dd>{{/each}}</dl></article>{{/each}}</div>",
+            "helpers": "const rank = {critical: 0, error: 1, warning: 2, info: 3};\nconst weight = row => Object.prototype.hasOwnProperty.call(rank, row.severity) ? rank[row.severity] : 4;\nconst title = value => String(value || 'Unknown alert').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ');\nconst labels = {name: 'Container', instance: 'Target', job: 'Monitor', queue: 'Queue', mountpoint: 'Filesystem', device: 'Device', service: 'Service', application: 'Application', environment: 'Environment', platform: 'Platform', container_label_com_docker_compose_project: 'Project'};\ncontext.handlebars.registerHelper('alertRows', rows => Array.isArray(rows) ? rows.filter(row => row && row.alertname).slice().sort((left, right) => weight(left) - weight(right) || String(left.alertname).localeCompare(String(right.alertname))) : []);\ncontext.handlebars.registerHelper('alertTitle', title);\ncontext.handlebars.registerHelper('severityText', value => value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : 'Severity unknown');\ncontext.handlebars.registerHelper('severityClass', value => Object.prototype.hasOwnProperty.call(rank, value) ? 'severity-' + value : 'severity-unknown');\ncontext.handlebars.registerHelper('alertDetails', row => Object.entries(row || {}).filter(([key, value]) => !['alertname', 'severity', 'alertstate', 'demo', '__name__'].includes(key) && !/^(Time|Value)(?: |$)/.test(key) && value !== null && value !== undefined && value !== '').map(([key, value]) => ({label: labels[key] || title(key), value: String(value)})));",
+            "styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .alert-list { display: flex; flex-direction: column; gap: 8px; padding: 8px; box-sizing: border-box; width: 100%; } .alert-item { min-width: 0; padding: 9px; border: 1px solid rgba(127,127,127,.3); border-left: 3px solid #8e8e8e; border-radius: 4px; background: rgba(127,127,127,.06); overflow-wrap: anywhere; white-space: normal; } .alert-item.severity-critical, .alert-item.severity-error { border-left-color: #f2495c; } .alert-item.severity-warning { border-left-color: #ffb357; } .alert-item.severity-info { border-left-color: #5794f2; } .alert-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 11px; line-height: 16px; opacity: .85; } .alert-sample { font-style: italic; } .alert-item h3 { margin: 4px 0; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-item dl { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 3px 10px; margin: 0; } .alert-item dt, .alert-item dd { min-width: 0; margin: 0; font-size: 12px; line-height: 18px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-item dt { opacity: .7; } .alert-empty { padding: 12px; }"
+          },
           "targets": [{"refId": "A", "expr": "ALERTS{alertstate=\"firing\",alertname=~\"Bot.*\"}", "instant": true, "format": "table"}]
         }
       ]
