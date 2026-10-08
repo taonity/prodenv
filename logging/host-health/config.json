@@ -1,0 +1,15 @@
+{
+  "ping_targets": ["1.1.1.1", "8.8.8.8"],
+  "dns_target": "cloudflare.com",
+  "http_targets": [
+    {"name": "Internet", "url": "https://www.cloudflare.com/cdn-cgi/trace"},
+    {"name": "Grafana ingress", "url": "https://grafana.taonity.org/api/health"}
+  ],
+  "certificates": [
+    {"name": "taonity.org", "path": "@REPO@/nginx/data/certbot/letsencrypt/live/taonity.org/fullchain.pem"}
+  ],
+  "bandwidth": {
+    "period_seconds": 604800,
+    "url": "https://speed.cloudflare.com/__down?bytes=10485760"
+  }
+}

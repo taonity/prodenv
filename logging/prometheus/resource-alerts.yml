@@ -14,7 +14,7 @@ groups:
           description: "Check database, backup staging and log growth before the filesystem fills."
 
       - alert: HostCPUHigh
-        expr: 1 - avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m])) > 0.90
+        expr: sum by(instance) (rate(node_cpu_seconds_total{job="node",mode=~"user|nice|system|irq|softirq"}[5m])) / count by(instance) (node_cpu_seconds_total{job="node",mode="idle"}) > 0.90
         for: 15m
         labels:
           severity: warning

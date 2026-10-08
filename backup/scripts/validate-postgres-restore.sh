@@ -45,4 +45,11 @@ dump_file="$(docker exec "$container" find "$restore_path" -type f -name databas
 docker exec "$container" \
   sh /backup-scripts/import-postgres-dump.sh "$dump_file" "$database"
 
+docker run --rm \
+  --network none \
+  -v "${MONITORING_METRICS_VOLUME:-prodenv-monitoring-textfile}:/metrics" \
+  -v "$script_directory:/backup-scripts:ro" \
+  "$postgres_image" \
+  sh /backup-scripts/record-backup-metric.sh restore "$restore_directory"
+
 echo "PostgreSQL restore validation completed successfully."

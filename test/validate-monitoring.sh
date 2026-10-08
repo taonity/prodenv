@@ -6,17 +6,39 @@ temporary="$(mktemp -d)"
 chmod 755 "$temporary"
 trap 'rm -rf "$temporary"' EXIT
 export METRICS_DIRECTORY="$temporary/metrics"
+export PYTHONDONTWRITEBYTECODE=1
 
 sh -n backup/scripts/record-backup-metric.sh
 sh -n backup/scripts/verify-postgres-restore.sh
+sh -n backup/scripts/validate-postgres-restore.sh
+sh -n logging/host-health/install.sh
+sh -n logging/host-health/run.sh
+python3 -m unittest discover -s logging/host-health -p 'test_*.py'
+python3 - <<'PY' | docker run --rm -i --entrypoint promtool prom/prometheus:v2.47.1 check metrics
+import sys
+sys.path.insert(0, 'logging/host-health')
+import collect
+metrics = collect.Metrics()
+metrics.add('probe_status', 2, probe='read', profile='test')
+metrics.add('interface_receive_bytes_total', 123, device='eth0')
+metrics.add('container_restarts_total', 2, name='long-container-name')
+metrics.add('last_run_timestamp_seconds', 123456789)
+print(metrics.render(), end='')
+PY
 sh backup/scripts/record-backup-metric.sh snapshot
 sh backup/scripts/record-backup-metric.sh integrity
+sh backup/scripts/record-backup-metric.sh restore fixture/project
+grep -Eq '^prodenv_backup_last_success_timestamp_seconds\{operation="restore",scope="fixture/project"\} [0-9]+$' "$METRICS_DIRECTORY/backup-restore.prom"
+if sh backup/scripts/record-backup-metric.sh restore '../invalid' 2>/dev/null; then
+  echo 'Invalid restore scope was accepted.' >&2
+  exit 1
+fi
 if sh backup/scripts/record-backup-metric.sh '../invalid' 2>/dev/null; then
   echo 'Invalid metric operation was accepted.' >&2
   exit 1
 fi
-for operation in snapshot integrity; do
-  grep -Eq "^prodenv_backup_last_success_timestamp_seconds\{operation=\"$operation\"\} [0-9]+$" "$METRICS_DIRECTORY/backup-$operation.prom"
+for operation in snapshot integrity restore; do
+  grep -Eq "^prodenv_backup_last_success_timestamp_seconds\{operation=\"$operation\".*\} [0-9]+$" "$METRICS_DIRECTORY/backup-$operation.prom"
   docker run --rm -i --entrypoint promtool prom/prometheus:v2.47.1 check metrics < "$METRICS_DIRECTORY/backup-$operation.prom"
 done
 
@@ -65,6 +87,12 @@ for (const mobile of mobileDashboards) {
   assert((mobile.templating.list || []).every(variable => variable.hide === 2), 'Project navigation must not use a visible dropdown');
   assert(mobile.links.every(link => link.keepTime));
   assert.equal(new Set(flatten(mobile.panels).map(panel => panel.id)).size, flatten(mobile.panels).length);
+  for (const [index, first] of mobile.panels.entries()) {
+    for (const second of mobile.panels.slice(index + 1)) {
+      const firstBox = first.gridPos, secondBox = second.gridPos;
+      assert(!(firstBox.x < secondBox.x + secondBox.w && firstBox.x + firstBox.w > secondBox.x && firstBox.y < secondBox.y + secondBox.h && firstBox.y + firstBox.h > secondBox.y), `${mobile.uid}: ${first.title} overlaps ${second.title}`);
+    }
+  }
   for (const panel of flatten(mobile.panels)) {
     if (panel.type === 'row') continue;
     assert.equal(panel.datasource.uid, 'Prometheus');
@@ -173,6 +201,25 @@ const productionShares = mobileDashboards.find(mobile => mobile.uid === 'mobile-
 const alertPanel = panels.find(panel => panel.id === 14);
 const serverDashboard = mobileDashboards.find(mobile => mobile.uid === 'mobile-server');
 const serverAlertPanel = flatten(serverDashboard.panels).find(panel => panel.id === 7);
+for (const panel of flatten(serverDashboard.panels).filter(panel => panel.type === 'stat' && panel.targets.some(target => target.expr.includes('vector(0/0)')))) {
+  assert(panel.fieldConfig.defaults.mappings.some(mapping => mapping.type === 'special' && mapping.options.match === 'nan'), 'Missing stat fields must not render NaN');
+}
+for (const panel of flatten(serverDashboard.panels).filter(panel => [11,18,37,38].includes(panel.id))) {
+  assert(panel.options.afterRender.includes('getBoundingClientRect'));
+  assert(panel.options.afterRender.includes('ResizeObserver'));
+  new Function('context', panel.options.afterRender);
+}
+assert(projectDashboard.panels.some(panel => panel.id === 41 && panel.targets[0].expr.includes('project=~')));
+assert(serverAlertPanel.targets[0].expr.includes('alertname!~"Bot.*"'));
+assert(serverAlertPanel.targets[0].expr.includes('project!~".*-prod"'));
+assert(!serverDashboard.panels.find(panel => panel.id === 1).targets.some(target => /node_cpu_seconds|node_memory_/.test(target.expr)), 'Do not repeat CPU and RAM summary panels');
+assert(!flatten(serverDashboard.panels).some(panel => (panel.targets || []).some(target => /container_cpu_cfs_/.test(target.expr))), 'Container throttling belongs on projects');
+for (const mobile of [dashboard, projectDashboard]) {
+  const health = flatten(mobile.panels).find(panel => panel.id === 40);
+  assert(health.targets.every(target => target.expr.includes('project=') || target.expr.includes('project=~')));
+  assert(health.options.styles.includes('overflow-wrap:anywhere'));
+  assert(flatten(mobile.panels).some(panel => (panel.targets || []).some(target => target.expr.includes('container_cpu_cfs_throttled_periods_total'))));
+}
 const alertHistory = dashboard.panels.find(panel => panel.id === 19);
 const serverAlertHistory = serverDashboard.panels.find(panel => panel.id === 9);
 assert.equal(alertPanel.type, 'marcusolsson-dynamictext-panel');
@@ -185,11 +232,11 @@ assert.equal(serverAlertPanel.gridPos.y, 3);
 assert(!JSON.stringify(alertPanel.options).includes('viewPanel'));
 for (const history of [alertHistory, serverAlertHistory]) {
   assert.equal(history.type, 'state-timeline');
-  assert.equal(history.title, 'Alert history');
+  assert.equal(history.title, 'Alerts / 24h');
   assert.equal(history.gridPos.y, history === alertHistory ? 32 : 25);
   assert.equal(history.gridPos.w, 24);
   assert.equal(history.timeFrom, '24h');
-  assert.equal(history.hideTimeOverride, false);
+  assert.equal(history.hideTimeOverride, true);
   assert.equal(history.targets.length, 1);
   assert.equal(history.targets[0].range, true);
   assert.equal(history.targets[0].instant, undefined);

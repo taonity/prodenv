@@ -72,11 +72,59 @@
 				{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "format": "table", "instant": true}
 			]
 		},
+{
+	"id": 41,
+	"type": "marcusolsson-dynamictext-panel",
+	"title": "Project alerts",
+	"gridPos": {
+		"x": 0,
+		"y": 17,
+		"w": 24,
+		"h": 8
+	},
+	"datasource": {
+		"type": "prometheus",
+		"uid": "Prometheus"
+	},
+	"description": "Firing alerts belonging to the selected production project, including container quota and health alerts.",
+	"fieldConfig": {
+		"defaults": {},
+		"overrides": []
+	},
+	"options": {
+		"renderMode": "allRows",
+		"wrap": false,
+		"editors": [
+			"helpers",
+			"styles",
+			"afterRender"
+		],
+		"editor": {
+			"language": "html",
+			"format": "auto"
+		},
+		"externalStyles": [],
+		"contentPartials": [],
+		"afterRender": "const root = context.element;\nconst list = root.querySelector('.alert-list');\nconst button = root.querySelector('.alert-toggle');\nconst panel = root.closest('.react-grid-item');\nconst grid = panel && panel.parentElement;\nconst saved = new Map();\nlet frame = 0;\nlet disposed = false;\nconst setStyle = (element, property, value) => {\n  if (!saved.has(element)) saved.set(element, new Map());\n  const properties = saved.get(element);\n  if (!properties.has(property)) properties.set(property, [element.style.getPropertyValue(property), element.style.getPropertyPriority(property)]);\n  if (element.style.getPropertyValue(property) !== value || element.style.getPropertyPriority(property) !== 'important') element.style.setProperty(property, value, 'important');\n};\nconst resize = () => {\n  frame = 0;\n  if (disposed || !panel || !list || !panel.isConnected) return;\n  for (let ancestor = root.parentElement; ancestor && ancestor !== panel; ancestor = ancestor.parentElement) {\n    setStyle(ancestor, 'height', 'auto');\n    setStyle(ancestor, 'max-height', 'none');\n    setStyle(ancestor, 'overflow', 'visible');\n  }\n  const originalHeight = parseFloat(panel.style.height);\n  const gridHeight = parseFloat(grid.style.height);\n  if (!Number.isFinite(originalHeight) || !Number.isFinite(gridHeight)) return;\n  const absolute = getComputedStyle(panel).position === 'absolute';\n  const panelTop = panel.getBoundingClientRect().top;\n  const height = Math.ceil(list.getBoundingClientRect().bottom - panelTop + 1);\n  const delta = height - originalHeight;\n  setStyle(panel, 'min-height', height + 'px');\n  setStyle(panel, 'max-height', height + 'px');\n  for (const sibling of grid.children) {\n    if (sibling === panel || !sibling.classList.contains('react-grid-item')) continue;\n    const translation = parseFloat(sibling.style.getPropertyValue('--inline-alert-offset')) || 0;\n    const below = absolute && sibling.getBoundingClientRect().top - translation >= panelTop + originalHeight - 1;\n    setStyle(sibling, '--inline-alert-offset', (below ? delta : 0) + 'px');\n    setStyle(sibling, 'translate', '0 var(--inline-alert-offset)');\n  }\n  setStyle(grid, 'min-height', absolute ? Math.max(0, gridHeight + delta) + 'px' : '0px');\n  setStyle(grid, 'max-height', absolute ? Math.max(0, gridHeight + delta) + 'px' : 'none');\n};\nconst schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(resize); };\nconst update = () => {\n  root.querySelectorAll('.alert-details').forEach(details => { details.hidden = !this.expanded; });\n  if (button) { button.textContent = this.expanded ? 'Collapse details' : 'Expand details'; button.setAttribute('aria-expanded', String(Boolean(this.expanded))); }\n  schedule();\n};\nconst toggle = () => { this.expanded = !this.expanded; update(); };\nconst observer = new ResizeObserver(schedule);\nif (list) observer.observe(list);\nconst mutations = new MutationObserver(schedule);\nif (grid) mutations.observe(grid, {childList: true, subtree: true, attributes: true, attributeFilter: ['style']});\nif (button) button.addEventListener('click', toggle);\nupdate();\nreturn () => {\n  disposed = true;\n  cancelAnimationFrame(frame);\n  observer.disconnect();\n  mutations.disconnect();\n  if (button) button.removeEventListener('click', toggle);\n  for (const [element, properties] of saved) for (const [property, previous] of properties) {\n    if (previous[0]) element.style.setProperty(property, previous[0], previous[1]);\n    else element.style.removeProperty(property);\n  }\n};",
+		"defaultContent": "<div class=\"alert-list\">No firing alerts returned</div>",
+		"content": "<div class=\"alert-list\"><div class=\"alert-toolbar\"><div><strong>Firing alerts: {{alertCount data}}</strong><div>{{alertSeveritySummary data}}</div></div><button class=\"alert-toggle\" type=\"button\" aria-expanded=\"false\">Expand details</button></div>{{#each (alertRows data)}}<article class=\"alert-item {{severityClass severity}}\"><div class=\"alert-meta\"><span>{{severityText severity}}</span>{{#if demo}}<span class=\"alert-sample\">Sample alert</span>{{/if}}</div><h3>{{alertTitle alertname}}</h3>{{#if (alertTarget this)}}<p class=\"alert-target\">{{alertTarget this}}</p>{{/if}}<div class=\"alert-details\" hidden><dl>{{#each (alertDetails this)}}<dt>{{label}}</dt><dd>{{value}}</dd>{{/each}}</dl></div></article>{{/each}}</div>",
+		"helpers": "const rank = {critical: 0, error: 1, warning: 2, info: 3};\nconst weight = row => Object.prototype.hasOwnProperty.call(rank, row.severity) ? rank[row.severity] : 4;\nconst title = value => String(value || 'Unknown alert').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ');\nconst labels = {name: 'Container', instance: 'Target', job: 'Monitor', queue: 'Queue', mountpoint: 'Filesystem', device: 'Device', service: 'Service', application: 'Application', environment: 'Environment', platform: 'Platform', container_label_com_docker_compose_project: 'Project', container_label_com_docker_compose_service: 'Service', container_label_com_docker_compose_container_number: 'Replica', container_label_com_docker_compose_version: 'Compose version', container_label_com_docker_compose_config_hash: 'Configuration hash'};\nconst sorted = rows => Array.isArray(rows) ? rows.filter(row => row && row.alertname).slice().sort((left, right) => weight(left) - weight(right) || String(left.alertname).localeCompare(String(right.alertname))) : [];\ncontext.handlebars.registerHelper('alertRows', sorted);\ncontext.handlebars.registerHelper('alertCount', rows => sorted(rows).length);\ncontext.handlebars.registerHelper('alertSeveritySummary', rows => { const counts = new Map(); sorted(rows).forEach(row => { const severity = Object.prototype.hasOwnProperty.call(rank, row.severity) ? row.severity : 'unknown severity'; counts.set(severity, (counts.get(severity) || 0) + 1); }); return Array.from(counts, ([severity, count]) => count + ' ' + severity).join(', '); });\ncontext.handlebars.registerHelper('alertTarget', row => row.name || row.container_label_com_docker_compose_service || row.service || row.instance || row.mountpoint || '');\ncontext.handlebars.registerHelper('alertTitle', title);\ncontext.handlebars.registerHelper('severityText', value => value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : 'Severity unknown');\ncontext.handlebars.registerHelper('severityClass', value => Object.prototype.hasOwnProperty.call(rank, value) ? 'severity-' + value : 'severity-unknown');\ncontext.handlebars.registerHelper('alertDetails', row => Object.entries(row || {}).filter(([key, value]) => !['alertname', 'severity', 'alertstate', 'demo', '__name__'].includes(key) && !/^(Time|Value)(?: |$)/.test(key) && value !== null && value !== undefined && value !== '').map(([key, value]) => ({label: labels[key] || title(key.replace(/^container_label_/, '').replace(/^com_docker_compose_/, '')), value: String(value)})));",
+		"styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .alert-list { padding: 8px; box-sizing: border-box; width: 100%; } .alert-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding-bottom: 8px; font-size: 12px; line-height: 20px; } .alert-toggle { min-height: 44px; padding: 6px 10px; color: inherit; background: transparent; border: 1px solid rgba(127,127,127,.5); border-radius: 4px; cursor: pointer; } .alert-toggle:focus-visible { outline: 2px solid #5794f2; outline-offset: 2px; } .alert-item { min-width: 0; padding: 6px 9px; border-bottom: 1px solid rgba(127,127,127,.3); border-left: 3px solid #8e8e8e; overflow-wrap: anywhere; white-space: normal; } .alert-item.severity-critical, .alert-item.severity-error { border-left-color: #f2495c; } .alert-item.severity-warning { border-left-color: #ffb357; } .alert-item.severity-info { border-left-color: #5794f2; } .alert-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 11px; line-height: 16px; opacity: .85; } .alert-sample { font-style: italic; } .alert-item h3 { margin: 2px 0; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-target { margin: 2px 0 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; } .alert-details[hidden] { display: none; } .alert-details { padding-top: 8px; } .alert-item dl { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 3px 10px; margin: 0; } .alert-item dt, .alert-item dd { min-width: 0; margin: 0; font-size: 12px; line-height: 18px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-item dt { opacity: .7; }"
+	},
+	"targets": [
 		{
-			"id": 6, "type": "row", "title": "Diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 17, "w": 24, "h": 1},
+			"refId": "A",
+			"expr": "(ALERTS{alertstate=\"firing\",container_label_com_docker_compose_project=~\"${project:regex}\"} or ALERTS{alertstate=\"firing\",project=~\"${project:regex}\"})",
+			"instant": true,
+			"format": "table"
+		}
+	]
+},
+		{
+			"id": 6, "type": "row", "title": "Diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 25, "w": 24, "h": 1},
 			"panels": [
 				{
-					"id": 7, "type": "timeseries", "title": "RAM / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 18, "w": 24, "h": 6},
+					"id": 7, "type": "timeseries", "title": "RAM / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 26, "w": 24, "h": 6},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"description": "Per-container working-set memory and its configured finite cap. No limit line is drawn when the cap is missing or effectively unlimited.",
 					"fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": [{"matcher": {"id": "byName", "options": "RAM limit"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}, {"id": "custom.fillOpacity", "value": 0}, {"id": "custom.lineStyle", "value": {"fill": "dash"}}]}]},
@@ -87,12 +135,35 @@
 					]
 				},
 				{
-					"id": 8, "type": "timeseries", "title": "CPU / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 24, "w": 24, "h": 6},
+					"id": 8, "type": "timeseries", "title": "CPU / ${container:text}", "repeat": "container", "repeatDirection": "v", "gridPos": {"x": 0, "y": 32, "w": 24, "h": 6},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
-					"description": "This container's CPU usage as a percentage of the whole host's CPU capacity, using a five-minute rate.",
+					"description": "CPU / host is usage divided by host capacity. Throttled is the percentage of scheduling periods in which this container hit its CPU quota; it is not lost CPU time or host steal. Both use five-minute rates.",
 					"fieldConfig": {"defaults": {"unit": "percent", "min": 0, "color": {"mode": "fixed", "fixedColor": "blue"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
-					"options": {"legend": {"showLegend": false}, "tooltip": {"mode": "single", "sort": "none"}},
-					"targets": [{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true}]
+					"options": {"legend": {"showLegend": true, "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "none"}},
+					"targets": [
+						{"refId": "B", "expr": "100 * max by(name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"cadvisor\"}) == 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU / host", "range": true},
+						{"refId": "C", "expr": "100 * max by(name) (rate(container_cpu_cfs_throttled_periods_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m]) / (rate(container_cpu_cfs_periods_total{job=\"cadvisor\",image!=\"\",name=~\"${container:regex}\",container_label_com_docker_compose_project=~\"${project:regex}\"}[5m]) > 0)) and on() (min(up{job=\"cadvisor\"}) == 1)", "legendFormat": "Throttled", "range": true}
+					]
+				},
+				{
+					"id": 40, "type": "marcusolsson-dynamictext-panel", "title": "Container health", "gridPos": {"x": 0, "y": 38, "w": 24, "h": 8},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "Observed starts include automatic restarts and detected recreations; short-lived manual restarts between polls may be missed. No check means no Docker healthcheck, not proven readiness. OOM is Docker's current OOMKilled state; kernel OOM events are on Server. Only containers with a restart policy are included.",
+					"fieldConfig": {"defaults": {}, "overrides": []},
+					"options": {
+						"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
+						"defaultContent": "<div class=\"health-empty\">Host health collector not reporting</div>",
+						"content": "<div class=\"health-grid\">{{#each data}}<article><h3>{{shortName name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts 24h</dt><dd>{{count starts}}</dd><dt>OOM killed</dt><dd>{{oomText oom}}</dd></dl></article>{{/each}}</div>",
+						"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "context.handlebars.registerHelper('shortName', value => String(value || 'Unknown').replace(/^.+-prod[-_]/, '')); context.handlebars.registerHelper('runningText', value => value === 1 ? 'Running' : value === 0 ? 'Stopped' : 'Unknown'); context.handlebars.registerHelper('healthText', value => value === 1 ? 'Healthy' : value === 0 ? 'Not healthy' : 'No check'); context.handlebars.registerHelper('oomText', value => value === 1 ? 'Yes' : value === 0 ? 'No' : 'Unknown'); context.handlebars.registerHelper('count', value => typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 'Unknown');",
+						"styles": ".health-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; } .health-grid article { min-width:0; padding:6px; border:1px solid #7775; border-radius:4px; } .health-grid h3 { margin:0 0 6px; font-size:13px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .health-grid dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px; margin:0; } .health-grid dt,.health-grid dd { margin:0; font-size:12px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .health-grid dd { text-align:right; } .health-empty { padding:12px; }"
+					},
+					"transformations": [{"id": "joinByField", "options": {"byField": "name", "mode": "outer"}}, {"id": "organize", "options": {"renameByName": {"Value #A": "running", "Value #B": "healthy", "Value #C": "starts", "Value #D": "oom"}}}],
+					"targets": [
+						{"refId": "A", "expr": "max by(name) (prodenv_health_container_running{job=\"node\",project=~\"${project:regex}\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+						{"refId": "B", "expr": "max by(name) (prodenv_health_container_healthy{job=\"node\",project=~\"${project:regex}\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+						{"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project=~\"${project:regex}\"}[24h]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+						{"refId": "D", "expr": "max by(name) (prodenv_health_container_oom_killed{job=\"node\",project=~\"${project:regex}\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
+					]
 				}
 			]
 		}

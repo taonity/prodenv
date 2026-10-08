@@ -12,40 +12,39 @@
 	],
 	"panels": [
 		{
-			"id": 1, "type": "stat", "title": "Server / current", "gridPos": {"x": 0, "y": 0, "w": 8, "h": 3},
+			"id": 1, "type": "stat", "title": "Host", "gridPos": {"x": 0, "y": 0, "w": 8, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"fieldConfig": {"defaults": {"unit": "percent", "decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+			"fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Uptime"}, "properties": [{"id": "unit", "value": "dtdurations"}]}]},
 			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
 			"targets": [
-				{"refId": "A", "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "instant": true},
-				{"refId": "B", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "instant": true},
-				{"refId": "C", "expr": "100 * min((node_filesystem_avail_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"} / node_filesystem_size_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) and on(instance,device,mountpoint) (node_filesystem_readonly{job=\"node\"} == 0)) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Disk free", "instant": true}
+				{"refId": "A", "expr": "time() - max(node_boot_time_seconds{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Uptime", "instant": true},
+				{"refId": "B", "expr": "sum(increase(node_vmstat_oom_kill{job=\"node\"}[24h])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "OOM / 24h", "instant": true}
 			]
 		},
 		{
 			"id": 2, "type": "stat", "title": "Monitoring", "gridPos": {"x": 8, "y": 0, "w": 8, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "decimals": 0, "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [
 				{"matcher": {"id": "byRegexp", "options": "^(Host|Containers)$"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Offline", "color": "red"}, "1": {"text": "Ready", "color": "green"}}}]}]},
-				{"matcher": {"id": "byName", "options": "Alerts"}, "properties": [{"id": "color", "value": {"mode": "thresholds"}}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}]}
+				{"matcher": {"id": "byName", "options": "Host job"}, "properties": [{"id": "unit", "value": "dtdurations"}, {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 600}]}}]}
 			]},
 			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
 			"targets": [
 				{"refId": "A", "expr": "min(up{job=\"node\"})", "legendFormat": "Host", "instant": true},
 				{"refId": "B", "expr": "min(up{job=\"cadvisor\"})", "legendFormat": "Containers", "instant": true},
-				{"refId": "C", "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)", "legendFormat": "Alerts", "instant": true}
+				{"refId": "C", "expr": "(time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)) or vector(0/0)", "legendFormat": "Host job", "instant": true}
 			]
 		},
 		{
 			"id": 6, "type": "stat", "title": "Backup evidence", "gridPos": {"x": 16, "y": 0, "w": 8, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"description": "Last successful all-project snapshot and dump-integrity check across the host. These do not prove a full database restore; missing evidence is not success.",
-			"fieldConfig": {"defaults": {"unit": "dtdurations", "noValue": "Not recorded", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Full restore"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Unverified", "color": "orange"}}}]}]}]},
+			"description": "Snapshot and integrity evidence, plus the last successfully imported isolated database restore. Restore evidence covers only the directory in its scope label, not all projects or application-level correctness. Missing evidence is not success.",
+			"fieldConfig": {"defaults": {"unit": "dtdurations", "noValue": "Not recorded", "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Not recorded", "color": "gray"}}}], "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
 			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 16}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
 			"targets": [
 				{"refId": "A", "expr": "time() - max(prodenv_backup_last_success_timestamp_seconds{job=\"node\",operation=\"snapshot\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Snapshot", "instant": true},
 				{"refId": "B", "expr": "time() - max(prodenv_backup_last_success_timestamp_seconds{job=\"node\",operation=\"integrity\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Integrity", "instant": true},
-				{"refId": "C", "expr": "vector(0)", "legendFormat": "Full restore", "instant": true}
+				{"refId": "C", "expr": "(time() - max(prodenv_backup_last_success_timestamp_seconds{job=\"node\",operation=\"restore\"}) and on() (min(up{job=\"node\"}) == 1)) or vector(0/0)", "legendFormat": "DB restore", "instant": true}
 			]
 		},
 		{
@@ -72,20 +71,35 @@
 			]
 		},
 		{
-			"id": 4, "type": "timeseries", "title": "Server / CPU and RAM", "gridPos": {"x": 0, "y": 11, "w": 24, "h": 6},
+			"id": 4, "type": "timeseries", "title": "CPU contention", "gridPos": {"x": 0, "y": 11, "w": 12, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Busy is executing user/system/interrupt work, excluding steal and I/O wait. Pressure is time at least one task waits for CPU; it is not additive with busy. Steal is hypervisor scheduling delay, where exposed. Zero steal does not prove dedicated capacity.",
 			"links": [{"title": "Host diagnostics", "url": "/d/rYdddlPWk", "keepTime": true}],
 			"fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
 			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
 			"targets": [
-				{"refId": "A", "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "range": true},
-				{"refId": "B", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "range": true}
+				{"refId": "A", "expr": "100 * sum(rate(node_cpu_seconds_total{job=\"node\",mode=~\"user|nice|system|irq|softirq\"}[5m])) / count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "range": true},
+				{"refId": "B", "expr": "100 * avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"steal\"}[5m])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Steal", "range": true},
+				{"refId": "C", "expr": "100 * max(rate(node_cpu_seconds_total{job=\"node\",mode=\"steal\"}[5m])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Worst vCPU", "range": true},
+				{"refId": "D", "expr": "100 * max(rate(node_pressure_cpu_waiting_seconds_total{job=\"node\"}[5m])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Pressure", "range": true}
+			]
+		},
+		{
+			"id": 10, "type": "timeseries", "title": "Memory", "gridPos": {"x": 12, "y": 11, "w": 12, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Available RAM includes reclaimable memory; swap used is not necessarily active paging. Pressure and paging activity are in Host diagnostics.",
+			"fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "sum(node_memory_MemAvailable_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Available", "range": true},
+				{"refId": "B", "expr": "sum(node_memory_MemTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Total", "range": true},
+				{"refId": "C", "expr": "sum(node_memory_SwapTotal_bytes{job=\"node\"} - node_memory_SwapFree_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap used", "range": true}
 			]
 		},
 		{
 				"id": 7, "type": "marcusolsson-dynamictext-panel", "title": "Firing alerts", "gridPos": {"x": 0, "y": 3, "w": 24, "h": 8},
 				"datasource": {"type": "prometheus", "uid": "Prometheus"},
-				"description": "All firing alerts, ordered by severity. Expand details keeps the alert list on this dashboard. An empty result is not proof that the server is healthy.",
+				"description": "Host and infrastructure alerts only, ordered by severity. Production application and container alerts are on their project dashboards. Missing monitoring is not proof of health.",
 				"fieldConfig": {"defaults": {}, "overrides": []},
 				"options": {
 					"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles", "afterRender"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [],
@@ -95,16 +109,281 @@
 					"helpers": "const rank = {critical: 0, error: 1, warning: 2, info: 3};\nconst weight = row => Object.prototype.hasOwnProperty.call(rank, row.severity) ? rank[row.severity] : 4;\nconst title = value => String(value || 'Unknown alert').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ');\nconst labels = {name: 'Container', instance: 'Target', job: 'Monitor', queue: 'Queue', mountpoint: 'Filesystem', device: 'Device', service: 'Service', application: 'Application', environment: 'Environment', platform: 'Platform', container_label_com_docker_compose_project: 'Project', container_label_com_docker_compose_service: 'Service', container_label_com_docker_compose_container_number: 'Replica', container_label_com_docker_compose_version: 'Compose version', container_label_com_docker_compose_config_hash: 'Configuration hash'};\nconst sorted = rows => Array.isArray(rows) ? rows.filter(row => row && row.alertname).slice().sort((left, right) => weight(left) - weight(right) || String(left.alertname).localeCompare(String(right.alertname))) : [];\ncontext.handlebars.registerHelper('alertRows', sorted);\ncontext.handlebars.registerHelper('alertCount', rows => sorted(rows).length);\ncontext.handlebars.registerHelper('alertSeveritySummary', rows => { const counts = new Map(); sorted(rows).forEach(row => { const severity = Object.prototype.hasOwnProperty.call(rank, row.severity) ? row.severity : 'unknown severity'; counts.set(severity, (counts.get(severity) || 0) + 1); }); return Array.from(counts, ([severity, count]) => count + ' ' + severity).join(', '); });\ncontext.handlebars.registerHelper('alertTarget', row => row.name || row.container_label_com_docker_compose_service || row.service || row.instance || row.mountpoint || '');\ncontext.handlebars.registerHelper('alertTitle', title);\ncontext.handlebars.registerHelper('severityText', value => value ? String(value).charAt(0).toUpperCase() + String(value).slice(1) : 'Severity unknown');\ncontext.handlebars.registerHelper('severityClass', value => Object.prototype.hasOwnProperty.call(rank, value) ? 'severity-' + value : 'severity-unknown');\ncontext.handlebars.registerHelper('alertDetails', row => Object.entries(row || {}).filter(([key, value]) => !['alertname', 'severity', 'alertstate', 'demo', '__name__'].includes(key) && !/^(Time|Value)(?: |$)/.test(key) && value !== null && value !== undefined && value !== '').map(([key, value]) => ({label: labels[key] || title(key.replace(/^container_label_/, '').replace(/^com_docker_compose_/, '')), value: String(value)})));",
 					"styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .alert-list { padding: 8px; box-sizing: border-box; width: 100%; } .alert-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding-bottom: 8px; font-size: 12px; line-height: 20px; } .alert-toggle { min-height: 44px; padding: 6px 10px; color: inherit; background: transparent; border: 1px solid rgba(127,127,127,.5); border-radius: 4px; cursor: pointer; } .alert-toggle:focus-visible { outline: 2px solid #5794f2; outline-offset: 2px; } .alert-item { min-width: 0; padding: 6px 9px; border-bottom: 1px solid rgba(127,127,127,.3); border-left: 3px solid #8e8e8e; overflow-wrap: anywhere; white-space: normal; } .alert-item.severity-critical, .alert-item.severity-error { border-left-color: #f2495c; } .alert-item.severity-warning { border-left-color: #ffb357; } .alert-item.severity-info { border-left-color: #5794f2; } .alert-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 11px; line-height: 16px; opacity: .85; } .alert-sample { font-style: italic; } .alert-item h3 { margin: 2px 0; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-target { margin: 2px 0 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; } .alert-details[hidden] { display: none; } .alert-details { padding-top: 8px; } .alert-item dl { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 3px 10px; margin: 0; } .alert-item dt, .alert-item dd { min-width: 0; margin: 0; font-size: 12px; line-height: 18px; letter-spacing: 0; overflow-wrap: anywhere; white-space: normal; } .alert-item dt { opacity: .7; }"
 				},
-				"targets": [{"refId": "A", "expr": "ALERTS{alertstate=\"firing\"}", "instant": true, "format": "table"}]
+				"targets": [{"refId": "A", "expr": "ALERTS{alertstate=\"firing\",alertname!~\"Bot.*\",container_label_com_docker_compose_project!~\".*-prod\",project!~\".*-prod\"}", "instant": true, "format": "table"}]
 		},
 		{
-			"id": 9, "type": "state-timeline", "title": "Alert history", "gridPos": {"x": 0, "y": 25, "w": 24, "h": 6},
+			"id": 9, "type": "state-timeline", "title": "Alerts / 24h", "gridPos": {"x": 0, "y": 25, "w": 24, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"description": "Sampled firing intervals for all server alerts during the last 24 hours. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
-			"timeFrom": "24h", "hideTimeOverride": false,
+			"description": "Sampled firing intervals for host and infrastructure alerts during the last 24 hours. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
+			"timeFrom": "24h", "hideTimeOverride": true,
 			"fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "Firing", "color": "red"}}}], "color": {"mode": "fixed", "fixedColor": "red"}, "custom": {"axisPlacement": "left", "axisWidth": 200, "fillOpacity": 80, "lineWidth": 0, "spanNulls": false}}, "overrides": []},
 			"options": {"mergeValues": true, "showValue": "never", "alignValue": "left", "rowHeight": 0.8, "perPage": 10, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": false, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
-			"targets": [{"refId": "A", "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(ALERTS{alertstate=\"firing\"}, \"affected\", \"$1\", \"job\", \"(.+)\"), \"affected\", \"$1\", \"instance\", \"(.+)\"), \"affected\", \"$1\", \"name\", \"(.+)\"), \"affected\", \"$1\", \"service\", \"(.+)\"), \"affected\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"), \"display\", \"$1\", \"alertname\", \"(.+)\"), \"display\", \"Metrics down\", \"alertname\", \"BotMetricsUnavailable\"), \"display\", \"State stale\", \"alertname\", \"BotStateStale\"), \"display\", \"Collector down\", \"alertname\", \"BotCollectorUnavailable\"), \"display\", \"Rooms missing\", \"alertname\", \"BotRoomsDisconnected\"), \"display\", \"Sending off\", \"alertname\", \"BotSenderDisabled\"), \"display\", \"Work stuck\", \"alertname\", \"BotWorkStuck\"), \"display\", \"Pipeline failing\", \"alertname\", \"BotPipelineFailing\"), \"display\", \"Spending stale\", \"alertname\", \"BotSpendingStale\"), \"display\", \"Backup overdue\", \"alertname\", \"BackupSnapshotOverdue\"), \"display\", \"Backup metrics\", \"alertname\", \"BackupMetricsUnreadable\"), \"display\", \"Disk low\", \"alertname\", \"HostDiskSpaceLow\"), \"display\", \"CPU high\", \"alertname\", \"HostCPUHigh\"), \"display\", \"RAM pressure\", \"alertname\", \"HostMemoryPressure\"), \"display\", \"Swap churn\", \"alertname\", \"HostSwapChurn\"), \"display\", \"RAM limit high\", \"alertname\", \"ContainerNearMemoryLimit\"), \"display\", \"No RAM cap\", \"alertname\", \"ContainerWithoutMemoryLimit\"), \"display\", \"CPU throttling\", \"alertname\", \"ContainerCPUThrottling\"), \"display\", \"Container metrics\", \"alertname\", \"ContainerMetricsUnavailable\"), \"display\", \"Host metrics\", \"alertname\", \"HostMetricsUnavailable\")", "legendFormat": "{{display}} / {{affected}}", "range": true}]
+			"targets": [{"refId": "A", "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(ALERTS{alertstate=\"firing\",alertname!~\"Bot.*\",container_label_com_docker_compose_project!~\".*-prod\",project!~\".*-prod\"}, \"affected\", \"$1\", \"job\", \"(.+)\"), \"affected\", \"$1\", \"instance\", \"(.+)\"), \"affected\", \"$1\", \"name\", \"(.+)\"), \"affected\", \"$1\", \"service\", \"(.+)\"), \"affected\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"), \"display\", \"$1\", \"alertname\", \"(.+)\"), \"display\", \"Metrics down\", \"alertname\", \"BotMetricsUnavailable\"), \"display\", \"State stale\", \"alertname\", \"BotStateStale\"), \"display\", \"Collector down\", \"alertname\", \"BotCollectorUnavailable\"), \"display\", \"Rooms missing\", \"alertname\", \"BotRoomsDisconnected\"), \"display\", \"Sending off\", \"alertname\", \"BotSenderDisabled\"), \"display\", \"Work stuck\", \"alertname\", \"BotWorkStuck\"), \"display\", \"Pipeline failing\", \"alertname\", \"BotPipelineFailing\"), \"display\", \"Spending stale\", \"alertname\", \"BotSpendingStale\"), \"display\", \"Backup overdue\", \"alertname\", \"BackupSnapshotOverdue\"), \"display\", \"Backup metrics\", \"alertname\", \"BackupMetricsUnreadable\"), \"display\", \"Disk low\", \"alertname\", \"HostDiskSpaceLow\"), \"display\", \"CPU high\", \"alertname\", \"HostCPUHigh\"), \"display\", \"RAM pressure\", \"alertname\", \"HostMemoryPressure\"), \"display\", \"Swap churn\", \"alertname\", \"HostSwapChurn\"), \"display\", \"RAM limit high\", \"alertname\", \"ContainerNearMemoryLimit\"), \"display\", \"No RAM cap\", \"alertname\", \"ContainerWithoutMemoryLimit\"), \"display\", \"CPU throttling\", \"alertname\", \"ContainerCPUThrottling\"), \"display\", \"Container metrics\", \"alertname\", \"ContainerMetricsUnavailable\"), \"display\", \"Host metrics\", \"alertname\", \"HostMetricsUnavailable\")", "legendFormat": "{{display}} / {{affected}}", "range": true}]
+		}
+		,
+		{
+			"id": 11, "type": "marcusolsson-dynamictext-panel", "title": "Filesystems", "gridPos": {"x": 0, "y": 31, "w": 24, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Writable persistent filesystems only. Free space is available to unprivileged processes. Inodes measure remaining file entries, not bytes.",
+			"fieldConfig": {"defaults": {}, "overrides": []},
+			"options": {
+				"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
+				"defaultContent": "<div class=\"health-empty\">Filesystem metrics unavailable</div>",
+				"content": "<div class=\"health-grid\">{{#each data}}<article><h3>{{mountpoint}}</h3><dl><dt>Space free</dt><dd>{{bytes free}}</dd><dt>Space left</dt><dd>{{percent percentFree}}</dd><dt>Inodes left</dt><dd>{{percent inodes}}</dd></dl></article>{{/each}}</div>",
+				"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "const valid = value => typeof value === 'number' && Number.isFinite(value); context.handlebars.registerHelper('percent', value => valid(value) ? value.toFixed(1) + '%' : 'Unknown'); context.handlebars.registerHelper('bytes', value => valid(value) ? (value / 1073741824).toFixed(1) + ' GiB' : 'Unknown');",
+				"styles": ".health-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; } .health-grid article { min-width:0; border-bottom:1px solid #7775; padding:4px; } .health-grid h3 { font-size:13px; line-height:18px; margin:0 0 6px; overflow-wrap:anywhere; white-space:normal; } .health-grid dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px; margin:0; } .health-grid dt,.health-grid dd { margin:0; font-size:12px; line-height:18px; overflow-wrap:anywhere; } .health-grid dd { text-align:right; } .health-empty { padding:12px; }"
+			},
+			"transformations": [
+				{"id": "joinByField", "options": {"byField": "mountpoint", "mode": "outer"}},
+				{"id": "organize", "options": {"excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true}, "renameByName": {"Value #A": "free", "Value #B": "percentFree", "Value #C": "inodes"}}}
+			],
+			"targets": [
+				{"refId": "A", "expr": "min by(mountpoint) (node_filesystem_avail_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"} and on(instance,device,mountpoint) (node_filesystem_readonly{job=\"node\"} == 0)) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"},
+				{"refId": "B", "expr": "100 * min by(mountpoint) ((node_filesystem_avail_bytes{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"} / node_filesystem_size_bytes{job=\"node\"}) and on(instance,device,mountpoint) (node_filesystem_readonly{job=\"node\"} == 0)) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"},
+				{"refId": "C", "expr": "100 * min by(mountpoint) ((node_filesystem_files_free{job=\"node\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"} / (node_filesystem_files{job=\"node\"} > 0)) and on(instance,device,mountpoint) (node_filesystem_readonly{job=\"node\"} == 0)) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"}
+			]
+		},
+		{
+			"id": 12, "type": "timeseries", "title": "Disk latency", "gridPos": {"x": 0, "y": 37, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Five-minute average block-device latency, including queueing. Averages hide tail stalls. No operations means no latency sample. Compare with disk demand at the same time; virtual disk utilization is not a reliable capacity percentage.",
+			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "rate(node_disk_read_time_seconds_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) / (rate(node_disk_reads_completed_total{job=\"node\"}[5m]) > 0) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} read", "range": true},
+				{"refId": "B", "expr": "rate(node_disk_write_time_seconds_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) / (rate(node_disk_writes_completed_total{job=\"node\"}[5m]) > 0) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} write", "range": true}
+			]
+		},
+		{
+			"id": 13, "type": "timeseries", "title": "Disk demand", "gridPos": {"x": 12, "y": 37, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"fieldConfig": {"defaults": {"unit": "iops", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "rate(node_disk_reads_completed_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} read", "range": true},
+				{"refId": "B", "expr": "rate(node_disk_writes_completed_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} write", "range": true}
+			]
+		},
+		{
+			"id": 14, "type": "timeseries", "title": "Network traffic", "gridPos": {"x": 0, "y": 44, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Host uplinks collected by the host timer, excluding loopback, Docker bridges and veth pairs. Five-minute rates of host-namespace counters. Traffic is demand, not maximum bandwidth.",
+			"fieldConfig": {"defaults": {"unit": "Bps", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "rate(prodenv_health_interface_receive_bytes_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) and on(instance) prodenv:health_fresh", "legendFormat": "{{device}} in", "range": true},
+				{"refId": "B", "expr": "rate(prodenv_health_interface_transmit_bytes_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) and on(instance) prodenv:health_fresh", "legendFormat": "{{device}} out", "range": true}
+			]
+		},
+		{
+			"id": 15, "type": "timeseries", "title": "Network latency", "gridPos": {"x": 12, "y": 44, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Mean RTT and its standard deviation (jitter) from five ICMP packets per run. Loss is separate; all packets lost never becomes zero latency. ICMP destinations can deprioritize replies.",
+			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "prodenv_health_network_rtt_seconds{job=\"node\"} and on(instance) prodenv:health_fresh", "legendFormat": "{{target}} RTT", "range": true},
+				{"refId": "B", "expr": "prodenv_health_network_jitter_seconds{job=\"node\"} and on(instance) prodenv:health_fresh", "legendFormat": "{{target}} jitter", "range": true}
+			]
+		},
+		{
+			"id": 16, "type": "timeseries", "title": "Network loss", "gridPos": {"x": 0, "y": 51, "w": 12, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "ICMP loss averaged over 15 minutes and outgoing TCP retransmissions divided by outgoing segments. These measure different protocols and must not be added together.",
+			"fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "avg_over_time(prodenv_health_network_loss_ratio{job=\"node\"}[15m]) and on(instance) prodenv:health_fresh", "legendFormat": "{{target}} loss", "range": true},
+				{"refId": "B", "expr": "rate(prodenv_health_tcp_RetransSegs_total{job=\"node\"}[5m]) / (rate(prodenv_health_tcp_OutSegs_total{job=\"node\"}[5m]) > 0) and on(instance) prodenv:health_fresh", "legendFormat": "TCP retries", "range": true}
+			]
+		},
+		{
+			"id": 17, "type": "timeseries", "title": "HTTP and DNS", "gridPos": {"x": 12, "y": 51, "w": 12, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Probes originate on this VPS. HTTP includes redirects and TLS; DNS uses the host resolver, including any cache. A separate externally hosted monitor is required to observe this VPS during an outage.",
+			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "prodenv_health_http_seconds{job=\"node\"} and on(instance,target) (prodenv_health_http_success{job=\"node\"} == 1) and on(instance) prodenv:health_fresh", "legendFormat": "{{target}}", "range": true},
+				{"refId": "B", "expr": "prodenv_health_dns_seconds{job=\"node\"} and on(instance) prodenv:health_fresh", "legendFormat": "DNS", "range": true}
+			]
+		},
+		{
+			"id": 18, "type": "marcusolsson-dynamictext-panel", "title": "Performance probes", "gridPos": {"x": 0, "y": 57, "w": 24, "h": 6},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "CPU: hourly 15-second single-thread sysbench. Read: 30 seconds every 3 hours, 100 IOPS. Sync: 30 seconds daily, 20 writes/s with fdatasync. One benchmark per run, skipped when busy. Baseline locks after at least seven days and seven samples, separately for each version/profile. These are not provider capacity guarantees.",
+			"fieldConfig": {"defaults": {}, "overrides": []},
+			"options": {
+				"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
+				"defaultContent": "<div class=\"probe-empty\">Host probes not reporting</div>",
+				"content": "<div class=\"probe-grid\">{{#each data}}<article><h3>{{probe}}</h3><p>{{statusText status}}</p><dl><dt>Last success</dt><dd>{{ageText age}}</dd><dt>Baseline</dt><dd>{{baselineText baseline}}</dd></dl></article>{{/each}}</div>",
+				"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "context.handlebars.registerHelper('statusText', value => ({'-1':'Not yet run',0:'Failed',1:'Succeeded',2:'Skipped: busy'})[value] || 'Unknown'); context.handlebars.registerHelper('baselineText', value => value === 1 ? 'Ready' : value === 0 ? 'Calibrating' : 'Unknown'); context.handlebars.registerHelper('ageText', value => typeof value !== 'number' || !Number.isFinite(value) ? 'Never' : value < 3600 ? Math.floor(value / 60) + ' min' : value < 86400 ? Math.floor(value / 3600) + ' h' : Math.floor(value / 86400) + ' d');",
+				"styles": ".probe-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:8px; } .probe-grid article { min-width:0; border-bottom:1px solid #7775; } .probe-grid h3 { text-transform:capitalize; font-size:14px; margin:0 0 6px; } .probe-grid p,.probe-grid dt,.probe-grid dd { font-size:12px; line-height:18px; margin:0 0 4px; overflow-wrap:anywhere; white-space:normal; } .probe-grid dl { margin:0; } .probe-grid dt { opacity:.7; } .probe-empty { padding:12px; }"
+			},
+			"transformations": [
+				{"id": "joinByField", "options": {"byField": "probe", "mode": "outer"}},
+				{"id": "organize", "options": {"renameByName": {"Value #A": "status", "Value #B": "age", "Value #C": "baseline"}}}
+			],
+			"targets": [
+				{"refId": "A", "expr": "max by(probe) (prodenv_health_probe_status{job=\"node\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+				{"refId": "B", "expr": "time() - max by(probe) (prodenv_health_probe_last_success_timestamp_seconds{job=\"node\"} > 0 and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+				{"refId": "C", "expr": "max by(probe) (prodenv_health_probe_baseline_ready{job=\"node\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
+			]
+		},
+		{
+			"id": 19, "type": "timeseries", "title": "CPU performance", "gridPos": {"x": 0, "y": 63, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Latest successful single-thread score and fixed reference. Not a core count or GHz estimate. Values disappear when older than twice the probe interval; the probe card shows exact age. Version changes restart calibration.",
+			"fieldConfig": {"defaults": {"unit": "ops", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never", "lineInterpolation": "stepAfter"}}, "overrides": [{"matcher": {"id": "byName", "options": "Baseline"}, "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash"}}]}]},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "prodenv_health_probe_events_per_second{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh", "legendFormat": "Measured", "range": true},
+				{"refId": "B", "expr": "prodenv_health_baseline_events_per_second{job=\"node\"} and on(instance) prodenv:health_fresh", "legendFormat": "Baseline", "range": true}
+			]
+		},
+		{
+			"id": 20, "type": "timeseries", "title": "Disk probe latency", "gridPos": {"x": 12, "y": 63, "w": 12, "h": 7},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Read p50/p95/p99 and write synchronization p95 at fixed small loads, not maximum IOPS. p95 means 95% of sampled operations completed within that time. Short-run p99 is noisy. Direct reads bypass the Linux page cache, not necessarily host caches. Synchronization latency is reported separately from write latency.",
+			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never", "lineInterpolation": "stepAfter"}}, "overrides": []},
+			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+			"targets": [
+				{"refId": "A", "expr": "prodenv_health_probe_latency_p50_seconds{job=\"node\",probe=\"read\"} and on(instance,probe,profile) prodenv:probe_fresh", "legendFormat": "Read p50", "range": true},
+				{"refId": "B", "expr": "prodenv_health_probe_latency_p95_seconds{job=\"node\",probe=\"read\"} and on(instance,probe,profile) prodenv:probe_fresh", "legendFormat": "Read p95", "range": true},
+				{"refId": "C", "expr": "prodenv_health_probe_latency_p99_seconds{job=\"node\",probe=\"read\"} and on(instance,probe,profile) prodenv:probe_fresh", "legendFormat": "Read p99", "range": true},
+				{"refId": "D", "expr": "prodenv_health_probe_sync_p95_seconds{job=\"node\",probe=\"sync\"} and on(instance,probe,profile) prodenv:probe_fresh", "legendFormat": "Sync p95", "range": true}
+			]
+		},
+		{
+			"id": 21, "type": "stat", "title": "Maintenance", "gridPos": {"x": 0, "y": 70, "w": 12, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Pending security packages are reported where Ubuntu apt-check is available. The package index must be fresh; counts exclude container images. Certificate is the earliest configured file expiry, not a remote TLS check.",
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Certificate"}, "properties": [{"id": "unit", "value": "dtdurations"}]}, {"matcher": {"id": "byName", "options": "Reboot"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "No", "color": "green"}, "1": {"text": "Required", "color": "orange"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}]}]}]},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 16}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "max(prodenv_health_security_updates_pending{job=\"node\"} and on(instance) prodenv:health_fresh and on(instance) (time() - prodenv_health_package_index_timestamp_seconds{job=\"node\"} < 259200)) or vector(0/0)", "legendFormat": "Security fixes", "instant": true},
+				{"refId": "B", "expr": "(min(prodenv_health_certificate_expiry_timestamp_seconds{job=\"node\"} and on(instance) prodenv:health_fresh) - time()) or vector(0/0)", "legendFormat": "Certificate", "instant": true},
+				{"refId": "C", "expr": "max(prodenv_health_reboot_required{job=\"node\"} and on(instance) prodenv:health_fresh) or vector(0/0)", "legendFormat": "Reboot", "instant": true}
+			]
+		},
+		{
+			"id": 22, "type": "stat", "title": "Check coverage", "gridPos": {"x": 12, "y": 70, "w": 12, "h": 3},
+			"datasource": {"type": "prometheus", "uid": "Prometheus"},
+			"description": "Security-check support, failed system services, and independently observed HTTP status. Unknown means unsupported or missing evidence. External checks and outage notifications require another machine.",
+			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Patch check"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Unavailable", "color": "orange"}, "1": {"text": "Ready", "color": "green"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}]}]}, {"matcher": {"id": "byName", "options": "External"}, "properties": [{"id": "noValue", "value": "Not set up"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Failing", "color": "red"}, "1": {"text": "Reachable", "color": "green"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Not set up", "color": "orange"}}}]}]}]},
+			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 16}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"targets": [
+				{"refId": "A", "expr": "max(prodenv_health_security_supported{job=\"node\"} and on(instance) prodenv:health_fresh) or vector(0/0)", "legendFormat": "Patch check", "instant": true},
+				{"refId": "B", "expr": "max(prodenv_health_failed_services{job=\"node\"} and on(instance) prodenv:health_fresh) or vector(0/0)", "legendFormat": "Failed units", "instant": true},
+				{"refId": "C", "expr": "min(probe_success{job=\"external-health\"} and on(instance) (up{job=\"external-health\"} == 1)) or vector(0/0)", "legendFormat": "External", "instant": true}
+			]
+		},
+		{
+			"id": 30, "type": "row", "title": "Host diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 73, "w": 24, "h": 1},
+			"panels": [
+				{
+					"id": 31, "type": "timeseries", "title": "Disk throughput", "gridPos": {"x": 0, "y": 74, "w": 12, "h": 7},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"fieldConfig": {"defaults": {"unit": "Bps", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+					"targets": [
+						{"refId": "A", "expr": "rate(node_disk_read_bytes_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} read", "range": true},
+						{"refId": "B", "expr": "rate(node_disk_written_bytes_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}} write", "range": true}
+					]
+				},
+				{
+					"id": 32, "type": "timeseries", "title": "Disk queue", "gridPos": {"x": 12, "y": 74, "w": 12, "h": 7},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "Average outstanding I/O requests, derived from weighted I/O time. Correlate with latency and demand; a virtual device does not expose all physical queues.",
+					"fieldConfig": {"defaults": {"unit": "short", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+					"targets": [{"refId": "A", "expr": "rate(node_disk_io_time_weighted_seconds_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}}", "range": true}]
+				},
+				{
+					"id": 33, "type": "timeseries", "title": "Memory and I/O stalls", "gridPos": {"x": 0, "y": 81, "w": 12, "h": 7},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+					"targets": [
+						{"refId": "A", "expr": "rate(node_pressure_memory_waiting_seconds_total{job=\"node\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "Memory", "range": true},
+						{"refId": "B", "expr": "rate(node_pressure_io_waiting_seconds_total{job=\"node\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "I/O", "range": true}
+					]
+				},
+				{
+					"id": 34, "type": "timeseries", "title": "Swap activity", "gridPos": {"x": 12, "y": 81, "w": 12, "h": 7},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"fieldConfig": {"defaults": {"unit": "ops", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+					"targets": [
+						{"refId": "A", "expr": "rate(node_vmstat_pswpin{job=\"node\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "Pages in", "range": true},
+						{"refId": "B", "expr": "rate(node_vmstat_pswpout{job=\"node\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "Pages out", "range": true}
+					]
+				},
+				{
+					"id": 35, "type": "timeseries", "title": "Interface errors", "gridPos": {"x": 0, "y": 88, "w": 12, "h": 7},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"fieldConfig": {"defaults": {"unit": "pps", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
+					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
+					"targets": [
+						{"refId": "A", "expr": "(rate(prodenv_health_interface_receive_errs_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) + rate(prodenv_health_interface_transmit_errs_total{job=\"node\"}[5m])) and on(instance) prodenv:health_fresh", "legendFormat": "{{device}} errors", "range": true},
+						{"refId": "B", "expr": "(rate(prodenv_health_interface_receive_drop_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) + rate(prodenv_health_interface_transmit_drop_total{job=\"node\"}[5m])) and on(instance) prodenv:health_fresh", "legendFormat": "{{device}} drops", "range": true}
+					]
+				},
+				{
+					"id": 36, "type": "stat", "title": "Download sample", "gridPos": {"x": 12, "y": 88, "w": 12, "h": 3},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "A 10 MiB Cloudflare download at most weekly, skipped when busy. This is path throughput for that transfer, not guaranteed port speed; it does not measure upload capacity. Disable or change its URL in the host config to comply with provider policy.",
+					"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 1, "unit": "Bps"}, "overrides": [{"matcher": {"id": "byName", "options": "Age"}, "properties": [{"id": "unit", "value": "dtdurations"}]}]},
+					"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 18}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+					"targets": [
+						{"refId": "A", "expr": "max(prodenv_health_bandwidth_bytes_per_second{job=\"node\"} and on(instance) prodenv:health_fresh and on(instance) (time() - prodenv_health_bandwidth_last_success_timestamp_seconds{job=\"node\"} < 1209600))", "legendFormat": "Download", "instant": true},
+						{"refId": "B", "expr": "time() - max(prodenv_health_bandwidth_last_success_timestamp_seconds{job=\"node\"} > 0 and on(instance) prodenv:health_fresh)", "legendFormat": "Age", "instant": true}
+					]
+				},
+				{
+					"id": 37, "type": "marcusolsson-dynamictext-panel", "title": "Probe details", "gridPos": {"x": 0, "y": 95, "w": 24, "h": 11},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "Latest fresh successful samples. Host activity during the test includes the benchmark itself. CPU/reference is an events-per-second ratio; disk/reference compares p95 latency. Profiles are version-specific. A missing baseline is still calibrating, not zero performance.",
+					"fieldConfig": {"defaults": {}, "overrides": []},
+					"options": {
+						"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
+						"defaultContent": "<div class=\"probe-empty\">No fresh successful probes</div>",
+						"content": "<div class=\"probe-details\">{{#each data}}<article><h3>{{probe}}</h3><dl><dt>Reference</dt><dd>{{ratioText ratio}}</dd><dt>Run time</dt><dd>{{number duration}} s</dd><dt>IOPS</dt><dd>{{number iops}}</dd><dt>Samples</dt><dd>{{number samples}}</dd><dt>Write p95</dt><dd>{{milliseconds writeLatency}}</dd><dt>Host busy</dt><dd>{{percent busy}}</dd><dt>Host steal</dt><dd>{{percent steal}}</dd><dt>Disk traffic</dt><dd>{{throughput traffic}}</dd></dl></article>{{/each}}</div>",
+						"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "const valid = value => typeof value === 'number' && Number.isFinite(value); context.handlebars.registerHelper('number', value => valid(value) ? value.toFixed(1) : 'N/A'); context.handlebars.registerHelper('percent', value => valid(value) ? (value * 100).toFixed(1) + '%' : 'N/A'); context.handlebars.registerHelper('milliseconds', value => valid(value) ? (value * 1000).toFixed(2) + ' ms' : 'N/A'); context.handlebars.registerHelper('throughput', value => valid(value) ? (value / 1048576).toFixed(1) + ' MiB/s' : 'N/A'); context.handlebars.registerHelper('ratioText', value => typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) + 'x' : 'N/A');",
+						"styles": ".probe-details { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:8px; } .probe-details article { min-width:0; } .probe-details h3 { margin:0 0 6px; font-size:14px; text-transform:capitalize; } .probe-details dl { margin:0; } .probe-details dt,.probe-details dd { font-size:12px; line-height:18px; margin:0; overflow-wrap:anywhere; white-space:normal; } .probe-details dt { opacity:.7; } .probe-details dd { margin-bottom:4px; } .probe-empty { padding:12px; }"
+					},
+					"transformations": [{"id": "joinByField", "options": {"byField": "probe", "mode": "outer"}}, {"id": "organize", "options": {"renameByName": {"Value #A": "ratio", "Value #B": "duration", "Value #C": "iops", "Value #D": "samples", "Value #E": "writeLatency", "Value #F": "busy", "Value #G": "steal", "Value #H": "traffic"}}}],
+					"targets": [
+						{"refId": "A", "expr": "max by(probe) ((prodenv_health_probe_events_per_second{job=\"node\"} / prodenv_health_baseline_events_per_second{job=\"node\"} or prodenv_health_probe_latency_p95_seconds{job=\"node\",probe=\"read\"} / prodenv_health_baseline_latency_p95_seconds{job=\"node\",probe=\"read\"} or prodenv_health_probe_sync_p95_seconds{job=\"node\"} / prodenv_health_baseline_sync_p95_seconds{job=\"node\"}) and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "B", "expr": "max by(probe) (prodenv_health_probe_success_duration_seconds{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "C", "expr": "max by(probe) (prodenv_health_probe_iops{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "D", "expr": "max by(probe) (prodenv_health_probe_samples{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "E", "expr": "max by(probe) (prodenv_health_probe_latency_p95_seconds{job=\"node\",probe=\"sync\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "F", "expr": "max by(probe) (prodenv_health_probe_context_cpu_busy_ratio{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "G", "expr": "max by(probe) (prodenv_health_probe_context_cpu_steal_ratio{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"},
+						{"refId": "H", "expr": "max by(probe) (prodenv_health_probe_context_disk_bytes_per_second{job=\"node\"} and on(instance,probe,profile) prodenv:probe_fresh)", "instant": true, "format": "table"}
+					]
+				},
+				{
+					"id": 38, "type": "marcusolsson-dynamictext-panel", "title": "Infrastructure health", "gridPos": {"x": 0, "y": 106, "w": 24, "h": 12},
+					"datasource": {"type": "prometheus", "uid": "Prometheus"},
+					"description": "Non-production-project containers with restart policies. Production container health belongs on the corresponding project dashboard. Missing healthcheck is unknown readiness.",
+					"fieldConfig": {"defaults": {}, "overrides": []},
+					"options": {
+						"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
+						"defaultContent": "<div class=\"health-empty\">Host health collector not reporting</div>",
+						"content": "<div class=\"infra-grid\">{{#each data}}<article><h3>{{name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts 24h</dt><dd>{{count starts}}</dd></dl></article>{{/each}}</div>",
+						"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "context.handlebars.registerHelper('runningText', value => value === 1 ? 'Running' : value === 0 ? 'Stopped' : 'Unknown'); context.handlebars.registerHelper('healthText', value => value === 1 ? 'Healthy' : value === 0 ? 'Not healthy' : 'No check'); context.handlebars.registerHelper('count', value => typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 'Unknown');",
+						"styles": ".infra-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; } .infra-grid article { min-width:0; padding:6px; border:1px solid #7775; border-radius:4px; } .infra-grid h3 { margin:0 0 6px; font-size:13px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .infra-grid dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px; margin:0; } .infra-grid dt,.infra-grid dd { margin:0; font-size:12px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .infra-grid dd { text-align:right; } .health-empty { padding:12px; }"
+					},
+					"transformations": [{"id": "joinByField", "options": {"byField": "name", "mode": "outer"}}, {"id": "organize", "options": {"renameByName": {"Value #A": "running", "Value #B": "healthy", "Value #C": "starts"}}}],
+					"targets": [
+						{"refId": "A", "expr": "max by(name) (prodenv_health_container_running{job=\"node\",project!~\".*-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+						{"refId": "B", "expr": "max by(name) (prodenv_health_container_healthy{job=\"node\",project!~\".*-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+						{"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project!~\".*-prod\"}[24h]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
+					]
+				}
+			]
 		}
 	]
 }

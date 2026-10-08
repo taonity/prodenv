@@ -1,0 +1,22 @@
+[Unit]
+Description=Bounded VPS health and performance probes
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/prodenv-health/run.sh
+TimeoutStartSec=5min
+StateDirectory=prodenv-health
+StateDirectoryMode=0700
+MemoryMax=256M
+TasksMax=64
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK

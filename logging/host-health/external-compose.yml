@@ -1,0 +1,26 @@
+services:
+  external-probe:
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 64m
+    pids_limit: 64
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "${EXTERNAL_BIND_IP:?Set the independent monitor private or VPN address}:9115:9115"
+    configs:
+      - source: probe-config
+        target: /etc/blackbox_exporter/config.yml
+    command: [--config.file=/etc/blackbox_exporter/config.yml]
+configs:
+  probe-config:
+    content: |
+      modules:
+        http_2xx:
+          prober: http
+          timeout: 8s
+          http:
+            preferred_ip_protocol: ip4
+            fail_if_not_ssl: true

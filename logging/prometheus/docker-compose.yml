@@ -6,10 +6,13 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./resource-alerts.yml:/etc/prometheus/resource-alerts.yml:ro
       - ./bot-alerts.yml:/etc/prometheus/bot-alerts.yml:ro
+      - ./host-health-alerts.yml:/etc/prometheus/host-health-alerts.yml:ro
+      - ./external-health.json:/etc/prometheus/external-health.json:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'

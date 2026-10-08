@@ -1,7 +1,55 @@
 rule_files:
   - ../logging/prometheus/bot-alerts.yml
+  - ../logging/prometheus/host-health-alerts.yml
 evaluation_interval: 1m
 tests:
+  - name: old textfile health must not be treated as live
+    interval: 1m
+    input_series:
+      - series: up{job="node",instance="host"}
+        values: '1+0x30'
+      - series: prodenv_health_last_run_timestamp_seconds{job="node",instance="host"}
+        values: '1+0x30'
+      - series: prodenv_health_probe_last_success_timestamp_seconds{job="node",instance="host",probe="cpu",profile="test"}
+        values: '1+0x30'
+      - series: prodenv_health_probe_period_seconds{job="node",instance="host",probe="cpu",profile="test"}
+        values: '3600+0x30'
+    promql_expr_test:
+      - expr: prodenv:health_fresh
+        eval_time: 25m
+        exp_samples: []
+      - expr: prodenv:probe_fresh
+        eval_time: 25m
+        exp_samples: []
+      - expr: count(ALERTS{alertname="HostHealthCollectorStale",alertstate="firing"})
+        eval_time: 25m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+  - name: degraded alert requires repeated fresh successful probes
+    interval: 1m
+    input_series:
+      - series: up{job="node",instance="host"}
+        values: '1+0x30'
+      - series: prodenv_health_last_run_timestamp_seconds{job="node",instance="host"}
+        values: '0+60x30'
+      - series: prodenv_health_probe_last_success_timestamp_seconds{job="node",instance="host",probe="cpu",profile="test"}
+        values: '1+0x30'
+      - series: prodenv_health_probe_period_seconds{job="node",instance="host",probe="cpu",profile="test"}
+        values: '3600+0x30'
+      - series: prodenv_health_probe_status{job="node",instance="host",probe="cpu",profile="test"}
+        values: '1+0x15 2+0x15'
+      - series: prodenv_health_probe_degraded_runs{job="node",instance="host",probe="cpu",profile="test"}
+        values: '3+0x30'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="HostBenchmarkDegraded",alertstate="firing"})
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: ALERTS{alertname="HostBenchmarkDegraded",alertstate="firing"}
+        eval_time: 25m
+        exp_samples: []
   - name: quiet healthy bot does not alert
     interval: 1m
     input_series:

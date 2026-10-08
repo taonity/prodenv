@@ -1,0 +1,139 @@
+groups:
+  - name: host-health
+    rules:
+      - alert: ExternalHTTPFailed
+        expr: probe_success{job="external-health"} == 0 or up{job="external-health"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Independent HTTP check failed for {{ $labels.instance }}"
+          description: "Inspect reachability from the independent monitor. Alerting during a total VPS outage must also run outside this VPS."
+      - alert: HostDNSFailed
+        expr: (prodenv_health_dns_success{job="node"} == 0) and on(instance) prodenv:health_fresh
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host DNS resolution is failing"
+          description: "Check the configured resolver and compare ICMP reachability with HTTP probes."
+      - record: prodenv:health_fresh
+        expr: (time() - prodenv_health_last_run_timestamp_seconds{job="node"} < 600) and on(instance) (up{job="node"} == 1)
+      - record: prodenv:probe_fresh
+        expr: (time() - prodenv_health_probe_last_success_timestamp_seconds{job="node"} < 2 * prodenv_health_probe_period_seconds{job="node"}) and (prodenv_health_probe_last_success_timestamp_seconds{job="node"} > 0) and on(instance) prodenv:health_fresh
+      - alert: HostHealthCollectorStale
+        expr: (time() - prodenv_health_last_run_timestamp_seconds{job="node"} > 600 or absent(prodenv_health_last_run_timestamp_seconds{job="node"})) and on() (max(up{job="node"}) == 1)
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host health job has not reported recently"
+          description: "Check prodenv-health.timer and its journal on the VPS. Old textfile values are not live measurements."
+      - alert: HostHealthCollectorFailed
+        expr: (prodenv_health_collector_success{job="node"} == 0) and on(instance) prodenv:health_fresh
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host health collector {{ $labels.collector }} is failing"
+          description: "Check installed dependencies, permissions and host configuration. No failed collection is treated as healthy."
+      - alert: HostCPUSteal
+        expr: avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="steal"}[5m])) > 0.05
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "CPU steal has exceeded 5% for 15 minutes"
+          description: "Correlate with CPU pressure and benchmark performance; steal suggests scheduling contention, not proof of a broken contract."
+      - alert: HostIOPressure
+        expr: rate(node_pressure_io_waiting_seconds_total{job="node"}[5m]) > 0.10
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Applications are persistently waiting for storage"
+          description: "Compare disk latency, queue depth and demand with backups and deployments."
+      - alert: HostInodesLow
+        expr: (node_filesystem_files_free{job="node",fstype!~"tmpfs|devtmpfs|overlay|squashfs|nsfs"} / (node_filesystem_files{job="node"} > 0) < 0.10) and on(instance,device,mountpoint) (node_filesystem_readonly{job="node"} == 0)
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.mountpoint }} has less than 10% free inodes"
+          description: "Inspect growth in small files before file creation starts failing despite free disk space."
+      - alert: HostOOMKill
+        expr: increase(node_vmstat_oom_kill{job="node"}[10m]) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "The host kernel has killed a process for lack of memory"
+          description: "Check the kernel journal, available RAM and container limits."
+      - alert: HostServiceFailed
+        expr: (prodenv_health_service_failed{job="node"} == 1) and on(instance) prodenv:health_fresh
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.service }} is failed"
+          description: "Inspect the failed systemd unit and its journal on the host."
+      - alert: ContainerStopped
+        expr: (prodenv_health_container_running{job="node"} == 0) and on(instance) prodenv:health_fresh
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.name }} is stopped"
+          description: "This container has a restart policy and is expected to run; one-shot jobs are excluded."
+      - alert: ContainerUnhealthy
+        expr: (prodenv_health_container_healthy{job="node"} == 0) and on(instance) prodenv:health_fresh
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.name }} is not healthy"
+          description: "Inspect its configured Docker healthcheck. Containers without a healthcheck are not reported as healthy."
+      - alert: HostBenchmarkDegraded
+        expr: (prodenv_health_probe_degraded_runs{job="node"} >= 3) and on(instance,probe,profile) prodenv:probe_fresh and on(instance,probe,profile) (prodenv_health_probe_status{job="node"} == 1)
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.probe }} performance repeatedly differs from its baseline"
+          description: "Three successful probes were degraded. Compare concurrent load and steal; this is a reference measurement, not promised capacity."
+      - alert: HostBenchmarkOverdue
+        expr: (time() - prodenv_health_probe_last_success_timestamp_seconds{job="node"} > 2 * prodenv_health_probe_period_seconds{job="node"}) and on(instance) prodenv:health_fresh
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.probe }} has no recent successful measurement"
+          description: "Inspect probe status: failure, headroom skip or not yet measured. Do not interpret an old score as current capacity."
+      - alert: HostNetworkLoss
+        expr: (avg_over_time(prodenv_health_network_loss_ratio{job="node"}[15m]) > 0.10) and on(instance) prodenv:health_fresh
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Persistent ICMP loss to {{ $labels.target }}"
+          description: "Compare both destinations and HTTP checks. ICMP may be deprioritized; this alone does not establish application packet loss."
+      - alert: HostHTTPProbeFailed
+        expr: (prodenv_health_http_success{job="node"} == 0) and on(instance) prodenv:health_fresh
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "HTTP probe to {{ $labels.target }} is failing"
+          description: "This check originates on the VPS and cannot replace an independent external uptime monitor."
+      - alert: HostCertificateExpiring
+        expr: (prodenv_health_certificate_expiry_timestamp_seconds{job="node"} - time() < 14 * 86400) and on(instance) prodenv:health_fresh
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "Certificate {{ $labels.certificate }} expires within 14 days"
+          description: "Check Certbot renewal and reload nginx after renewal. This is the configured certificate file, not proof of the remotely served certificate."
+      - alert: HostSecurityUpdates
+        expr: (prodenv_health_security_updates_pending{job="node"} > 0) and on(instance) prodenv:health_fresh
+        for: 24h
+        labels: {severity: warning}
+        annotations:
+          summary: "Security updates have been pending for a day"
+          description: "Schedule host patching. Counts depend on the local package index and do not cover application or container image vulnerabilities."
+      - alert: HostPackageIndexStale
+        expr: (time() - prodenv_health_package_index_timestamp_seconds{job="node"} > 3 * 86400) and on(instance) prodenv:health_fresh
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "The host package index has not been refreshed for three days"
+          description: "Check apt-daily.timer; an old package index cannot establish that security updates are current."
+      - alert: BackupRestoreOverdue
+        expr: (time() - prodenv_backup_last_success_timestamp_seconds{job="node",operation="restore"} > 30 * 86400 or absent(prodenv_backup_last_success_timestamp_seconds{job="node",operation="restore"})) and on() (max(up{job="node"}) == 1)
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "No recent successful isolated database restore is recorded"
+          description: "Run validate-postgres-restore.sh on a restored backup. Evidence covers only that restore directory, not every database."

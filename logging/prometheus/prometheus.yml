@@ -4,8 +4,28 @@ global:
 rule_files:
   - /etc/prometheus/resource-alerts.yml
   - /etc/prometheus/bot-alerts.yml
+  - /etc/prometheus/host-health-alerts.yml
 
 scrape_configs:
+  - job_name: external-health
+    scrape_interval: 1m
+    scrape_timeout: 10s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    file_sd_configs:
+      - files: [/etc/prometheus/external-health.json]
+    relabel_configs:
+      - source_labels: [exporter]
+        regex: '.+'
+        action: keep
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [exporter]
+        target_label: __address__
+
   - job_name: 'prometheus'
     scrape_interval: 15s
     static_configs:
