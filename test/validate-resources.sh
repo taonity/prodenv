@@ -2,9 +2,9 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-export PROMTOOL="${PROMTOOL:-promtool}"
+export PROMTOOL="${PROMTOOL:-}"
 
-for executable in docker node "$PROMTOOL"; do
+for executable in docker node; do
   command -v "$executable" >/dev/null || { printf 'Required executable missing: %s\n' "$executable" >&2; exit 1; }
 done
 
@@ -17,20 +17,35 @@ const {execFileSync} = require('child_process');
 
 const root = process.cwd();
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'prodenv-resource-check-'));
+fs.chmodSync(temporary, 0o755);
 const fixture = path.join(temporary, 'fixture');
 const promtool = process.env.PROMTOOL;
+const {audit} = require(path.join(root, 'test/audit-container-resources.cjs'));
+const boundedContainer = {Name: '/fixture-backend-1', Config: {Labels: {'com.docker.compose.project': 'fixture', 'com.docker.compose.service': 'backend'}}, HostConfig: {Memory: 268435456, MemorySwap: 402653184, NanoCpus: 500000000, PidsLimit: 128}};
+assert.deepEqual(audit(boundedContainer, 8589934592).issues, []);
+assert.equal(audit(boundedContainer, 8589934592).project, 'fixture');
+assert.equal(audit({...boundedContainer, HostConfig: {}}, 8589934592).issues.length, 4);
+assert(audit({...boundedContainer, HostConfig: {...boundedContainer.HostConfig, Memory: 8589934592, MemorySwap: -1}}, 8589934592).issues.includes('RAM limit is not below host capacity'));
+assert.deepEqual(audit({...boundedContainer, HostConfig: {...boundedContainer.HostConfig, NanoCpus: 0, CpuQuota: 50000, CpuPeriod: 100000}}, 8589934592).issues, []);
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {encoding: 'utf8', ...options});
 }
 
-function compose(files, extra = [], environment = {}) {
+function compose(files, extra = [], environment = {}, directory = fixture, project = 'resource-check') {
   return JSON.parse(run('docker', [
-    'compose', '--project-name', 'resource-check',
-    '--project-directory', fixture,
+    'compose', '--project-name', project,
+    '--project-directory', directory,
     ...files.flatMap(file => ['-f', path.join(fixture, file)]),
     'config', '--no-env-resolution', '--format', 'json', ...extra,
   ], {env: {...process.env, ...environment}}));
+}
+
+function checkPrometheus(args, options = {}) {
+  return promtool ? run(promtool, args, options) : run('docker', [
+    'run', '--rm', '--entrypoint', 'promtool', '-v', `${root}:${root}:ro`, '-v', `${temporary}:${temporary}:ro`,
+    '-w', root, 'prom/prometheus:v2.47.1', ...args,
+  ], options);
 }
 
 function checkLimits(services) {
@@ -71,15 +86,56 @@ try {
   console.log(`Infrastructure: ${Object.keys(infrastructure.services).length} bounded services; ${totalMiB} MiB combined RAM ceilings (not reservations)`);
 
   const overrides = yamlFiles.filter(filename => /^cicd\/docker-webhook\/shared\/envs\/[^/]+\/docker-compose\.override\.yml$/.test(filename));
+  const projectsDirectory = process.env.RESOURCE_PROJECTS_DIRECTORY;
+  assert(projectsDirectory, 'Set RESOURCE_PROJECTS_DIRECTORY to a directory containing checkouts of the four Taonity application repositories; limits must be checked after merging their own templates.');
+  const applications = new Map();
+  for (const filename of overrides) {
+    const deployment = path.basename(path.dirname(filename));
+    const project = deployment.replace(/-(prod|stage)$/, '');
+    if (applications.has(project)) continue;
+    const checkout = path.join(projectsDirectory, project);
+    const template = path.join(checkout, 'templates/docker');
+    assert(fs.existsSync(path.join(template, 'docker-compose.yml')), `${project}: missing templates/docker/docker-compose.yml in ${checkout}`);
+    const required = {};
+    for (const source of run('git', ['-C', checkout, 'ls-files', '-z', 'templates/docker']).split('\0').filter(source => /\.ya?ml$/.test(source))) {
+      const text = fs.readFileSync(path.join(checkout, source), 'utf8');
+      for (const match of text.matchAll(/\$\{([A-Z_][A-Z_0-9]*):?\?/g)) required[match[1]] = 'resource-check';
+      const destination = path.join(fixture, 'applications', project, path.relative(template, path.join(checkout, source)));
+      fs.mkdirSync(path.dirname(destination), {recursive: true});
+      fs.writeFileSync(destination, text);
+      fs.writeFileSync(path.join(path.dirname(destination), '.env'), '');
+      fs.writeFileSync(path.join(path.dirname(destination), '.env.test'), '');
+    }
+    console.log(`${project}: ${run('git', ['-C', checkout, 'rev-parse', '--short', 'HEAD']).trim()}`);
+    applications.set(project, required);
+  }
   let applicationServices = 0;
   for (const filename of overrides) {
-    const config = compose([filename], ['--no-consistency']);
+    const deployment = path.basename(path.dirname(filename));
+    const project = deployment.replace(/-(prod|stage)$/, '');
+    const directory = path.join(fixture, 'applications', project);
+    const base = `applications/${project}/docker-compose.yml`;
+    const policy = `applications/${project}/docker-compose.prodenv.yml`;
+    const ownsPolicy = fs.existsSync(path.join(fixture, policy));
+    const files = [base, filename, ...(ownsPolicy ? [policy] : [])];
+    const environment = {...applications.get(project), COMPOSE_PROJECT_NAME: deployment, COMPOSE_ENV_FILE: '.env', SPRING_PROFILES_ACTIVE: deployment.endsWith('-prod') ? 'prod' : 'stage'};
+    if (ownsPolicy) {
+      const override = compose([filename], ['--no-consistency']);
+      const owned = compose([base, policy], [], environment, directory, deployment);
+      for (const [service, settings] of Object.entries(override.services)) {
+        const limits = owned.services[service] || {};
+        if (['cpus', 'mem_limit', 'memswap_limit', 'pids_limit'].every(key => Number(limits[key]) > 0)) {
+          assert(!['cpus', 'mem_limit', 'memswap_limit', 'pids_limit', 'deploy'].some(key => key in settings), `${deployment}/${service}: resource policy belongs in ${project}, not the host override`);
+        }
+      }
+    }
+    const config = compose(files, [], environment, directory, deployment);
     checkLimits(config.services);
     applicationServices += Object.keys(config.services).length;
-    const tuned = compose([filename], ['--no-consistency'], {
+    const tuned = compose(files, [], {...environment,
       BACKEND_MEMORY_LIMIT: '896m', BACKEND_MEMORY_SWAP_LIMIT: '1152m',
       BACKEND_CPU_LIMIT: '1.5', BACKEND_PIDS_LIMIT: '640',
-    });
+    }, directory, deployment);
     const backend = tuned.services.app || tuned.services.backend;
     assert.equal(Number(backend.mem_limit), 896 * 1024 * 1024);
     assert.equal(Number(backend.memswap_limit), 1152 * 1024 * 1024);
@@ -87,7 +143,7 @@ try {
     assert.equal(Number(backend.pids_limit), 640);
   }
   assert.equal(overrides.length, 8);
-  console.log(`Applications: ${overrides.length} overrides, ${applicationServices} bounded services; tuning variables verified`);
+  console.log(`Applications: ${overrides.length} complete deployments, ${applicationServices} bounded services; ownership and tuning variables verified`);
 
   const dashboardSources = [{id: 1860, revision: 37}, {id: 19792, revision: 6}];
   const expressions = [];
@@ -195,9 +251,9 @@ try {
   const dashboardRules = writeJson('dashboard-rules.json', {groups: [{name: 'dashboard-validation', rules:
     expressions.map((expr, index) => ({record: `resource_dashboard_${index}`, expr})),
   }]});
-  run(promtool, ['check', 'rules', dashboardRules], {stdio: 'inherit'});
-  run(promtool, ['check', 'config', '--syntax-only', 'logging/prometheus/prometheus.yml'], {stdio: 'inherit'});
-  run(promtool, ['check', 'rules', 'logging/prometheus/resource-alerts.yml'], {stdio: 'inherit'});
+  checkPrometheus(['check', 'rules', dashboardRules], {stdio: 'inherit'});
+  checkPrometheus(['check', 'config', '--syntax-only', 'logging/prometheus/prometheus.yml'], {stdio: 'inherit'});
+  checkPrometheus(['check', 'rules', 'logging/prometheus/resource-alerts.yml'], {stdio: 'inherit'});
 
   const hostTotal = {series: 'node_memory_MemTotal_bytes{job="node",instance="host"}', values: '8589934592+0x30'};
   const hostAvailable = {series: 'node_memory_MemAvailable_bytes{job="node",instance="host"}', values: '1717986918+0x30'};
@@ -243,7 +299,7 @@ try {
       },
     ],
   });
-  run(promtool, ['test', 'rules', alertTests], {stdio: 'inherit'});
+  checkPrometheus(['test', 'rules', alertTests], {stdio: 'inherit'});
   assert.deepEqual(Object.keys(memoryOverviewQueries).sort(), ['A', 'B', 'C', 'D']);
   const overviewContainers = [
     {name: 'bounded', limit: 268435456, workingSet: 201326592, swap: 0},
@@ -303,7 +359,7 @@ try {
       },
     ],
   });
-  run(promtool, ['test', 'rules', overviewTests], {stdio: 'inherit'});
+  checkPrometheus(['test', 'rules', overviewTests], {stdio: 'inherit'});
   console.log(`Resource validation passed: ${dashboardSources.length} pinned dashboards, ${panelCount} panels/rows, ${expressions.length} queries, 3 alert scenarios, 3 memory overview/history scenarios`);
 } finally {
   if (fs.rmSync) {

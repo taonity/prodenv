@@ -212,6 +212,9 @@ for (const panel of flatten(serverDashboard.panels).filter(panel => [11,18,37,38
   assert(panel.options.afterRender.includes('ResizeObserver'));
   new Function('context', panel.options.afterRender);
 }
+for (const panel of [serverDashboard.panels.find(panel => panel.id === 11), ...[dashboard, projectDashboard].map(mobile => flatten(mobile.panels).find(panel => panel.id === 40))]) {
+  assert(!panel.options.afterRender.includes("position === 'absolute') { restore(); return; }"), `${panel.title}: desktop must resize to show every row`);
+}
 assert(projectDashboard.panels.some(panel => panel.id === 41 && panel.targets[0].expr.includes('project=~')));
 assert(serverAlertPanel.targets[0].expr.includes('alertname!~"Bot.*"'));
 assert(serverAlertPanel.targets[0].expr.includes('project!~".*-prod"'));
@@ -227,13 +230,15 @@ const alertHistory = dashboard.panels.find(panel => panel.id === 19);
 const serverAlertHistory = serverDashboard.panels.find(panel => panel.id === 9);
 assert.equal(alertPanel.type, 'marcusolsson-dynamictext-panel');
 assert.equal(serverAlertPanel.type, 'marcusolsson-dynamictext-panel');
-assert.deepEqual(alertPanel.options, serverAlertPanel.options);
+assert(serverAlertPanel.options.content.includes('alertTarget this'));
+assert(!serverAlertPanel.options.content.includes('alert-identity'));
+assert(serverAlertPanel.options.content.includes('class="alert-details" hidden'));
 assert(dashboard.panels.includes(alertPanel), 'Bot alerts must not be hidden in Diagnostics');
 assert(mobileDashboards.find(mobile => mobile.uid === 'mobile-server').panels.includes(serverAlertPanel));
 assert.equal(alertPanel.gridPos.y, 3);
 assert.equal(serverAlertPanel.gridPos.y, 3);
 assert(!JSON.stringify(alertPanel.options).includes('viewPanel'));
-for (const history of [alertHistory, serverAlertHistory]) {
+for (const history of [alertHistory]) {
   assert.equal(history.type, 'state-timeline');
   assert.equal(history.title, 'Alerts / 24h');
   assert.equal(history.gridPos.y, history === alertHistory ? 32 : 25);
@@ -256,6 +261,42 @@ for (const history of [alertHistory, serverAlertHistory]) {
 }
 assert(alertHistory.targets[0].expr.includes('alertname=~"Bot.*"'));
 assert(!serverAlertHistory.targets[0].expr.includes('alertname=~"Bot.*"'));
+assert.equal(serverAlertHistory.type, 'marcusolsson-dynamictext-panel');
+assert.equal(serverAlertHistory.options.renderMode, 'data');
+assert.equal(serverAlertHistory.timeFrom, '24h');
+assert.equal(serverAlertHistory.targets[0].expr, serverAlertPanel.targets[0].expr);
+assert.equal(serverAlertHistory.targets[0].range, true);
+assert(!JSON.stringify(serverAlertHistory.options).includes('perPage'));
+assert(serverAlertHistory.options.content.includes('historyRows'));
+const historyHelpers = {};
+const registerAlerts = require(path.join(process.cwd(), 'logging/grafana/alert-panels.cjs')).registerAlerts;
+registerAlerts({handlebars: {registerHelper: (name, helper) => { historyHelpers[name] = helper; }}, panelData: {
+  timeRange: {from: 0, to: 600000}, request: {intervalMs: 60000},
+  series: Array.from({length: 24}, (_, index) => ({fields: [
+    {type: 'time', values: [0, 60000, 120000, 180000]},
+    {type: 'number', labels: {alertname: 'ContainerWithoutMemoryLimit', severity: 'warning', project: `project-${index}`, service: 'backend', name: `project-${index}-backend-1`}, values: [1, 1, null, 1]},
+  ]})),
+}});
+assert.equal(historyHelpers.historyRows().length, 24);
+assert.equal(new Set(historyHelpers.historyRows().map(row => row.identity.find(item => item.label === 'Container').value)).size, 24);
+assert.equal(historyHelpers.historyRows()[0].intervals.length, 2);
+assert.deepEqual(historyHelpers.historyIdentity({project: 'stage', service: 'backend', name: 'stage-backend-1'}), [
+  {label: 'Project', value: 'stage'}, {label: 'Container', value: 'stage-backend-1'},
+]);
+assert.deepEqual(historyHelpers.historyIdentity({project: 'stage', service: 'backend', container_label_com_docker_compose_container_number: '2'}), [
+  {label: 'Project', value: 'stage'}, {label: 'Service', value: 'backend'}, {label: 'Replica', value: '2'},
+]);
+assert(!serverAlertHistory.options.content.includes('<dl'));
+assert(serverAlertHistory.options.content.indexOf('alert-axis') < serverAlertHistory.options.content.indexOf('each (historyRows)'));
+assert.deepEqual(historyHelpers.alertIdentity({project: 'stage', service: 'backend', name: 'stage-backend-1'}), [
+  {label: 'Project', value: 'stage'}, {label: 'Container', value: 'stage-backend-1'}, {label: 'Service', value: 'backend'},
+]);
+assert.deepEqual(historyHelpers.alertIdentity({container_label_com_docker_compose_project: 'other', container_label_com_docker_compose_service: 'backend', container_label_com_docker_compose_container_number: '2'}), [
+  {label: 'Project', value: 'other'}, {label: 'Service', value: 'backend'}, {label: 'Replica', value: '2'},
+]);
+assert.deepEqual(historyHelpers.alertIdentity({instance: 'node:9100', mountpoint: '/'}), [{label: 'Filesystem', value: '/'}, {label: 'Target', value: 'node:9100'}]);
+const sharedLayout = 'return (' + require(path.join(process.cwd(), 'logging/grafana/panel-layout.cjs')).toString() + ').call(this, context);';
+for (const panel of [serverAlertPanel, serverAlertHistory, serverDashboard.panels.find(panel => panel.id === 11), ...[dashboard, projectDashboard].map(mobile => flatten(mobile.panels).find(panel => panel.id === 40))]) assert.equal(panel.options.afterRender, sharedLayout);
 assert.equal(dashboard.panels.find(panel => panel.id === 9).gridPos.y, 38);
 assert(!mobileDashboards.some(mobile => flatten(mobile.panels).some(panel => panel.type === 'table')));
 assert(alertPanel.options.styles.includes('overflow-wrap: anywhere'));
@@ -305,18 +346,19 @@ const listeners = new Map();
 const attributes = new Map();
 const toggleButton = {addEventListener: (event, callback) => listeners.set(event, callback), removeEventListener: event => listeners.delete(event), setAttribute: (key, value) => attributes.set(key, value)};
 const grid = {style: style({height: '600px'})};
-const panel = {style: style({height: '296px'}), parentElement: grid, isConnected: true, getBoundingClientRect: () => ({top: 10})};
-const sibling = {style: style(), classList: {contains: name => name === 'react-grid-item'}, getBoundingClientRect: () => ({top: 314 + (parseFloat(sibling.style.getPropertyValue('--inline-alert-offset')) || 0)})};
+const panel = {style: style({height: '296px'}), classList: {contains: name => name === 'react-grid-item'}, parentElement: grid, isConnected: true, getBoundingClientRect: () => ({top: 10})};
+const sibling = {style: style(), classList: {contains: name => name === 'react-grid-item'}, getBoundingClientRect: () => ({top: 314 + (parseFloat(sibling.style.getPropertyValue('translate').split(' ')[1]) || 0)})};
 grid.children = [panel, sibling];
 const wrapper = {style: style({height: '262px', overflow: 'auto'}), parentElement: panel};
 const list = {getBoundingClientRect: () => ({bottom: 43 + (detailElements[0].hidden ? 300 : 760)})};
-const root = {parentElement: wrapper, closest: () => panel, querySelector: selector => selector === '.alert-list' ? list : toggleButton, querySelectorAll: () => detailElements};
+const root = {style: style(), parentElement: wrapper, closest: () => panel, querySelector: selector => selector === '.alert-toggle' ? toggleButton : list, querySelectorAll: () => detailElements};
 const frames = new Map();
 let nextFrame = 0;
 const observers = [];
 class Observer {
   constructor(callback) { this.callback = callback; this.disconnected = false; observers.push(this); }
   observe() {}
+  unobserve() {}
   disconnect() { this.disconnected = true; }
 }
 const flushFrames = () => { const pending = Array.from(frames.values()); frames.clear(); pending.forEach(callback => callback()); };
@@ -329,19 +371,19 @@ const attach = require('vm').runInNewContext('(function () {' + alertPanel.optio
 const state = {};
 let cleanup = attach.call(state);
 flushFrames();
-assert.equal(panel.style.getPropertyValue('min-height'), '334px');
-assert.equal(sibling.style.getPropertyValue('--inline-alert-offset'), '38px');
-assert.equal(grid.style.getPropertyValue('min-height'), '638px');
+assert.equal(panel.style.getPropertyValue('min-height'), '345px');
+assert.equal(sibling.style.getPropertyValue('translate'), '0px 49px');
+assert.equal(grid.style.getPropertyValue('min-height'), '649px');
 assert.equal(attributes.get('aria-expanded'), 'false');
 listeners.get('click')();
 flushFrames();
 assert(detailElements.every(detail => !detail.hidden));
-assert.equal(panel.style.getPropertyValue('min-height'), '794px');
-assert.equal(sibling.style.getPropertyValue('--inline-alert-offset'), '498px');
+assert.equal(panel.style.getPropertyValue('min-height'), '805px');
+assert.equal(sibling.style.getPropertyValue('translate'), '0px 509px');
 assert.equal(attributes.get('aria-expanded'), 'true');
 observers[1].callback();
 flushFrames();
-assert.equal(sibling.style.getPropertyValue('--inline-alert-offset'), '498px', 'Reflow must not accumulate offsets');
+assert.equal(sibling.style.getPropertyValue('translate'), '0px 509px', 'Reflow must not accumulate offsets');
 cleanup();
 assert(observers.every(observer => observer.disconnected));
 assert.equal(listeners.size, 0);
@@ -354,19 +396,19 @@ flushFrames();
 assert.equal(attributes.get('aria-expanded'), 'true', 'Refresh must preserve expanded details');
 listeners.get('click')();
 flushFrames();
-assert.equal(panel.style.getPropertyValue('min-height'), '334px');
+assert.equal(panel.style.getPropertyValue('min-height'), '345px');
 assert.equal(attributes.get('aria-expanded'), 'false');
 cleanup();
 positioning = 'static';
 cleanup = attach.call(state);
 flushFrames();
-assert.equal(panel.style.getPropertyValue('min-height'), '334px');
-assert.equal(sibling.style.getPropertyValue('--inline-alert-offset'), '0px', 'Mobile flow already moves subsequent panels');
+assert.equal(panel.style.getPropertyValue('min-height'), '345px');
+assert.equal(sibling.style.getPropertyValue('translate'), '0px', 'Mobile flow already moves subsequent panels');
 assert.equal(grid.style.getPropertyValue('max-height'), 'none');
 listeners.get('click')();
 flushFrames();
-assert.equal(panel.style.getPropertyValue('min-height'), '794px');
-assert.equal(sibling.style.getPropertyValue('--inline-alert-offset'), '0px');
+assert.equal(panel.style.getPropertyValue('min-height'), '805px');
+assert.equal(sibling.style.getPropertyValue('translate'), '0px');
 cleanup();
 assert.equal(productionShares.type, 'marcusolsson-dynamictext-panel');
 assert.equal(productionShares.title, 'Production share of server');
