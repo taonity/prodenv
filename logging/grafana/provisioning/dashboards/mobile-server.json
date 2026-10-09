@@ -23,6 +23,7 @@
 		},
 		{
 			"id": 2, "type": "stat", "title": "Monitoring", "gridPos": {"x": 8, "y": 0, "w": 8, "h": 3},
+			"links": [{"title": "Web Security", "url": "/d/web-security", "keepTime": true}],
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"fieldConfig": {"defaults": {"noValue": "Unknown", "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "decimals": 0, "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [
 				{"matcher": {"id": "byRegexp", "options": "^(Host|Containers)$"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Offline", "color": "red"}, "1": {"text": "Ready", "color": "green"}}}]}]},

@@ -11,7 +11,7 @@ services:
       # Backs proxy_cache_path zone "public-cache" (declared in nginx.conf)
       - /var/cache/nginx:uid=101,gid=101,mode=0750,size=512m
     healthcheck:
-      test: ["CMD", "service", "nginx", "status"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8089/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -19,3 +19,8 @@ services:
     depends_on:
       - certbot
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

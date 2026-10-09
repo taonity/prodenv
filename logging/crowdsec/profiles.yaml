@@ -1,0 +1,6 @@
+name: observation-only
+filters:
+  - "true"
+notifications:
+  - loki_alerts
+on_success: break

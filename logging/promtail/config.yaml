@@ -4,7 +4,7 @@ server:
   grpc_listen_port: 0
 
 positions:
-  filename: /tmp/positions.yaml
+  filename: /var/lib/promtail/positions.yaml
 
 clients:
   - url: http://loki:3100/loki/api/v1/push
@@ -19,4 +19,69 @@ scrape_configs:
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: 'container'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+    pipeline_stages:
+      - match:
+          selector: '{container="nginx"} |= "\"event\":\"nginx_access\""'
+          stages:
+            - json:
+                expressions:
+                  site: site
+                  status: status
+                  upstream: upstream
+                  path: path
+                  bytes: bytes
+                  duration: duration
+            - template:
+                source: outcome
+                template: '{{ if .upstream }}upstream{{ else if eq (printf "%v" .status) "444" }}edge_rejected{{ else }}edge_response{{ end }}'
+            - static_labels:
+                security: web
+            - labels:
+                site:
+                status:
+                outcome:
+            - metrics:
+                requests_total:
+                  type: Counter
+                  prefix: nginx_security_
+                  description: Observed Nginx access events
+                  max_idle_duration: 24h
+                  config:
+                    match_all: true
+                    action: inc
+                response_bytes_total:
+                  type: Counter
+                  prefix: nginx_security_
+                  description: Response bytes in observed Nginx events
+                  source: bytes
+                  max_idle_duration: 24h
+                  config:
+                    action: add
+                duration_seconds:
+                  type: Histogram
+                  prefix: nginx_security_
+                  description: Nginx request duration
+                  source: duration
+                  max_idle_duration: 24h
+                  config:
+                    buckets: [0.1, 0.5, 1, 5]
+      - match:
+          selector: '{service="crowdsec"}'
+          stages:
+            - static_labels:
+                security: detection
+            - match:
+                selector: '{service="crowdsec"} |~ "HTTP server returned non 200|level=error.*(http-plugin|notification)|level=fatal.*(http-plugin|notification)"'
+                stages:
+                  - metrics:
+                      notification_errors_total:
+                        type: Counter
+                        prefix: crowdsec_
+                        description: Native CrowdSec alert export failures
+                        max_idle_duration: 24h
+                        config:
+                          match_all: true
+                          action: inc
 

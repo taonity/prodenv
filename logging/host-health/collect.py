@@ -2,6 +2,7 @@ import argparse
 import datetime
 import fcntl
 import hashlib
+import ipaddress
 import json
 import math
 import os
@@ -300,6 +301,12 @@ def collect_system(metrics, state):
     previous = state.setdefault("containers", {})
     current = {}
     for container in containers:
+        for target, bindings in (container.get("NetworkSettings", {}).get("Ports") or {}).items():
+            for binding in bindings or []:
+                address = binding["HostIp"] or "0.0.0.0"
+                metrics.add("container_published_port", 1, name=container["Name"].lstrip("/"),
+                            target=target, address=address, port=binding["HostPort"],
+                            binding="loopback" if ipaddress.ip_address(address).is_loopback else "non_loopback")
         if container["HostConfig"]["RestartPolicy"]["Name"] in ("", "no"):
             continue
         labels = container["Config"].get("Labels") or {}
@@ -319,6 +326,53 @@ def collect_system(metrics, state):
         if "Health" in status:
             metrics.add("container_healthy", int(status["Health"]["Status"] == "healthy"), **scope)
     state["containers"] = current
+
+
+def collect_security(metrics, config):
+    output, _ = command(["ss", "-H", "-lntu"])
+    listeners = set()
+    for line in output.splitlines():
+        fields = line.split()
+        if len(fields) < 6:
+            continue
+        address, port = fields[4].rsplit(":", 1)
+        address = address.strip("[]")
+        binding = "non_loopback"
+        if address != "*" and ipaddress.ip_address(address.split("%", 1)[0]).is_loopback:
+            binding = "loopback"
+        listeners.add((fields[0], address, port, binding))
+    for protocol, address, port, binding in listeners:
+        metrics.add("listening_port", 1, protocol=protocol, address=address, port=port, binding=binding)
+    try:
+        output, error = command(["journalctl", "--dmesg", "--since=-5min", "--no-pager", "--output=json",
+                                 "--lines=5001", "--grep=\\[UFW (BLOCK|REJECT)\\]"], accepted=(0, 1))
+    except (OSError, RuntimeError, subprocess.TimeoutExpired):
+        metrics.add("firewall_observation_available", 0)
+        return
+    entries = [json.loads(line) for line in output.splitlines() if line.strip()]
+    metrics.add("firewall_observation_available", int(bool(entries) and not error))
+    metrics.add("firewall_sample_truncated", int(len(entries) > 5000))
+    if not entries or error:
+        return
+    ports = {str(port) for port in config.get("firewall_ports", [22, 80, 443, 3000])}
+    counts = {}
+    sources = set()
+    for entry in entries[:5000]:
+        message = entry.get("MESSAGE", "")
+        if not isinstance(message, str) or not re.search(r"\[UFW (BLOCK|REJECT)\]", message):
+            continue
+        fields = dict(re.findall(r"\b(SRC|DPT|PROTO)=([^\s]+)", message))
+        protocol = fields.get("PROTO", "other")
+        protocol = protocol if protocol in ("TCP", "UDP", "ICMP", "ICMPv6") else "other"
+        port = fields.get("DPT", "other")
+        port = port if port in ports else "other"
+        key = (protocol, port)
+        counts[key] = counts.get(key, 0) + 1
+        if fields.get("SRC"):
+            sources.add(fields["SRC"])
+    for (protocol, port), count in counts.items():
+        metrics.add("firewall_logged_drops_5m", count, protocol=protocol, port=port)
+    metrics.add("firewall_source_count_5m", len(sources))
 
 
 def collect_maintenance(metrics, config):
@@ -385,6 +439,7 @@ def main():
         collectors = {
             "network": lambda: collect_network(metrics, config),
             "system": lambda: collect_system(metrics, state),
+            "security": lambda: collect_security(metrics, config),
             "maintenance": lambda: collect_maintenance(metrics, config),
             "benchmark": lambda: collect_probes(metrics, state, directory, now),
             "bandwidth": lambda: collect_bandwidth(metrics, state, config, now),

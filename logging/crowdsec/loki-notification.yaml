@@ -1,0 +1,38 @@
+type: http
+name: loki_alerts
+log_level: info
+group_wait: 1s
+group_threshold: 10
+max_retry: 5
+timeout: 10s
+url: http://loki:3100/loki/api/v1/push
+method: POST
+headers:
+  Content-Type: application/json
+  X-Scope-OrgID: tenant1
+format: |-
+  {"streams":[{"stream":{"security":"crowdsec","service":"crowdsec"},"values":[
+  {{- range $index, $alert := . -}}
+    {{- if $index }},{{ end -}}
+    {{- $data := $alert | toJson | fromJson -}}
+    {{- $observed := toDate "2006-01-02T15:04:05Z07:00" $data.stop_at -}}
+    {{- $knownSites := dict -}}
+    {{- range $alert.Events -}}
+      {{- range .Meta -}}
+        {{- if and (eq .Key "nginx_site") .Value -}}
+          {{- $_ := set $knownSites .Value true -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $sites := keys $knownSites | sortAlpha -}}
+    {{- $site := "Unknown" -}}
+    {{- if eq (len $sites) 1 -}}{{- $site = first $sites -}}
+    {{- else if gt (len $sites) 1 -}}{{- $site = "Multiple sites" -}}
+    {{- else -}}{{- $sites = list "Unknown" -}}{{- end -}}
+    {{- $record := dict "event" "crowdsec_alert" "id" ($alert | toJson | sha256sum) "machine_id" $alert.MachineID
+      "scenario" $alert.Scenario "source_ip" $alert.Source.Value "source_scope" $alert.Source.Scope
+      "start_at" $alert.StartAt "stop_at" $alert.StopAt
+      "events_count" $alert.EventsCount "site" $site "sites" $sites "alert" $alert -}}
+    ["{{ $observed.UnixNano }}",{{ $record | toJson | toJson }}]
+  {{- end -}}
+  ]}]}

@@ -46,6 +46,9 @@ docker run --rm --entrypoint promtool \
   -v "$PWD:/work:ro" -w /work \
   prom/prometheus:v2.47.1 test rules test/monitoring-rules.test.yml
 docker run --rm --entrypoint promtool \
+  -v "$PWD:/work:ro" -w /work \
+  prom/prometheus:v2.47.1 test rules test/web-security-rules.test.yml
+docker run --rm --entrypoint promtool \
   -v "$PWD/logging/prometheus:/etc/prometheus:ro" \
   prom/prometheus:v2.47.1 check config /etc/prometheus/prometheus.yml
 

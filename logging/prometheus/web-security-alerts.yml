@@ -1,0 +1,66 @@
+groups:
+  - name: web-security
+    rules:
+      - alert: WebSecurityCollectorUnavailable
+        expr: up{job=~"crowdsec|promtail"} == 0 or absent(up{job="crowdsec"}) or absent(up{job="promtail"})
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: Web security collector unavailable
+          description: Check CrowdSec and Promtail container health and internal scrape connectivity.
+      - alert: WebSecurityLogPipelineStalled
+        expr: (sum(increase(nginx_security_requests_total{site="internal-health"}[5m])) or vector(0)) == 0
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: Nginx heartbeat is missing from collected access logs
+          description: Check Nginx health, JSON logging, Docker discovery and Promtail parsing. Quiet public traffic alone cannot trigger this alert.
+      - alert: WebSecurityDetectionPipelineStalled
+        expr: ((sum(increase(cs_node_hits_ok_total{job="crowdsec",name="prodenv/nginx-json"}[5m])) or vector(0)) == 0) and ((sum(increase(nginx_security_requests_total{site="internal-health"}[5m])) or vector(0)) > 0)
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: CrowdSec is not parsing Nginx events
+          description: Access logs are arriving in Promtail but not the CrowdSec parser. Check acquisition and parser configuration.
+      - alert: WebSecurityAlertExportFailing
+        expr: sum(increase(crowdsec_notification_errors_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: CrowdSec could not export alert evidence
+          description: Check the native loki_alerts notifier and Loki connectivity. Alerts remain in CrowdSec's local database, but the Grafana detection history may be incomplete.
+      - alert: WebSecurityRepeatedDetections
+        expr: sum by (name) (increase(cs_bucket_overflowed_total{job="crowdsec"}[10m])) > 20
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: Repeated CrowdSec detections
+          description: More than twenty detections of the same scenario in ten minutes. Observation mode does not block requests.
+      - alert: WebSecurityLokiUnavailable
+        expr: up{job="loki"} == 0 or absent(up{job="loki"})
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: Security log storage unavailable
+          description: Check Loki health and Promtail delivery errors before relying on request history.
+      - alert: WebSecurityLogDeliveryFailing
+        expr: sum(increase(promtail_dropped_entries_total[5m])) > 0 or sum(increase(promtail_request_duration_seconds_count{status_code=~"5..|429"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          security: web
+        annotations:
+          summary: Log delivery is dropping or repeatedly failing requests
+          description: Check Promtail and Loki limits, storage capacity and connectivity. Log history may be incomplete.

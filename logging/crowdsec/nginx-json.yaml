@@ -1,0 +1,29 @@
+name: prodenv/nginx-json
+description: Parse query-free Nginx access events for maintained HTTP scenarios
+filter: >-
+  evt.Line.Labels.type == 'prodenv-nginx' &&
+  evt.Parsed.message startsWith '{' &&
+  UnmarshalJSON(evt.Parsed.message, evt.Unmarshaled, 'access') in ['', nil] &&
+  evt.Unmarshaled.access.event == 'nginx_access'
+onsuccess: next_stage
+statics:
+  - meta: service
+    value: http
+  - meta: log_type
+    value: http_access-log
+  - meta: source_ip
+    expression: evt.Unmarshaled.access.source_ip
+  - meta: http_status
+    expression: string(evt.Unmarshaled.access.status)
+  - meta: http_path
+    expression: evt.Unmarshaled.access.path
+  - meta: http_verb
+    expression: evt.Unmarshaled.access.method
+  - meta: http_user_agent
+    expression: "''"
+  - meta: target_fqdn
+    expression: evt.Unmarshaled.access.host
+  - meta: nginx_site
+    expression: evt.Unmarshaled.access.site
+  - target: evt.StrTime
+    expression: evt.Unmarshaled.access.time

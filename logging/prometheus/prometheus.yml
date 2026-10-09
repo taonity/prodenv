@@ -5,8 +5,21 @@ rule_files:
   - /etc/prometheus/resource-alerts.yml
   - /etc/prometheus/bot-alerts.yml
   - /etc/prometheus/host-health-alerts.yml
+  - /etc/prometheus/web-security-alerts.yml
 
 scrape_configs:
+  - job_name: loki
+    static_configs:
+      - targets: ['loki:3100']
+
+  - job_name: crowdsec
+    static_configs:
+      - targets: ['crowdsec:6060']
+
+  - job_name: promtail
+    static_configs:
+      - targets: ['promtail:9080']
+
   - job_name: external-health
     scrape_interval: 1m
     scrape_timeout: 10s

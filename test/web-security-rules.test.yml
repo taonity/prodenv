@@ -1,0 +1,75 @@
+rule_files:
+  - ../logging/prometheus/web-security-alerts.yml
+evaluation_interval: 1m
+tests:
+  - name: quiet public traffic with a working heartbeat is healthy
+    interval: 1m
+    input_series:
+      - series: up{job="crowdsec"}
+        values: '1+0x30'
+      - series: up{job="promtail"}
+        values: '1+0x30'
+      - series: up{job="loki"}
+        values: '1+0x30'
+      - series: nginx_security_requests_total{site="internal-health",status="204"}
+        values: '0+2x30'
+      - series: cs_node_hits_ok_total{job="crowdsec",name="prodenv/nginx-json"}
+        values: '0+2x30'
+    promql_expr_test:
+      - expr: ALERTS{security="web",alertstate="firing"}
+        eval_time: 20m
+        exp_samples: []
+  - name: ordinary requests and isolated detections do not notify
+    interval: 1m
+    input_series:
+      - series: nginx_security_requests_total{site="fixture",status="404"}
+        values: '0+1x30'
+      - series: nginx_security_requests_total{site="_",status="444"}
+        values: '0+1x30'
+      - series: cs_bucket_overflowed_total{job="crowdsec",name="crowdsecurity/http-probing"}
+        values: '0+1x30'
+    promql_expr_test:
+      - expr: ALERTS{alertname="WebSecurityRepeatedDetections",alertstate="firing"}
+        eval_time: 20m
+        exp_samples: []
+  - name: missing collectors and missing heartbeat are visible
+    interval: 1m
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="WebSecurityCollectorUnavailable",alertstate="firing"})
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 2
+      - expr: count(ALERTS{alertname="WebSecurityLogPipelineStalled",alertstate="firing"})
+        eval_time: 10m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+  - name: running but stalled parser is visible
+    interval: 1m
+    input_series:
+      - series: nginx_security_requests_total{site="internal-health"}
+        values: '0+2x30'
+      - series: cs_node_hits_ok_total{job="crowdsec",name="prodenv/nginx-json"}
+        values: '100+0x30'
+    promql_expr_test:
+      - expr: count(ALERTS{alertname="WebSecurityDetectionPipelineStalled",alertstate="firing"})
+        eval_time: 15m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+  - name: repeated engine detections and export failures notify
+    interval: 1m
+    input_series:
+      - series: cs_bucket_overflowed_total{job="crowdsec",name="crowdsecurity/http-probing"}
+        values: '0+5x30'
+      - series: crowdsec_notification_errors_total{service="crowdsec"}
+        values: '0+1x30'
+    promql_expr_test:
+      - expr: count by (alertname) (ALERTS{alertname=~"WebSecurityAlertExportFailing|WebSecurityRepeatedDetections",alertstate="firing"})
+        eval_time: 20m
+        exp_samples:
+          - labels: '{alertname="WebSecurityAlertExportFailing"}'
+            value: 1
+          - labels: '{alertname="WebSecurityRepeatedDetections"}'
+            value: 1

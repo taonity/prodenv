@@ -1,0 +1,7 @@
+source: docker
+container_name:
+  - nginx
+follow_stdout: true
+follow_stderr: false
+labels:
+  type: prodenv-nginx

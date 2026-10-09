@@ -1,0 +1,32 @@
+services:
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.8.1
+    restart: unless-stopped
+    environment:
+      COLLECTIONS: crowdsecurity/nginx
+      DISABLE_ONLINE_API: "true"
+      NO_HUB_UPGRADE: "true"
+    volumes:
+      - crowdsec-config:/etc/crowdsec
+      - crowdsec-data:/var/lib/crowdsec/data
+      - ./acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ./config.yaml.local:/etc/crowdsec/config.yaml.local:ro
+      - ./profiles.yaml:/etc/crowdsec/profiles.yaml:ro
+      - ./loki-notification.yaml:/etc/crowdsec/notifications/loki.yaml:ro
+      - ./nginx-json.yaml:/etc/crowdsec/parsers/s01-parse/prodenv-nginx-json.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  crowdsec-config:
+  crowdsec-data:

@@ -1,0 +1,16 @@
+common:
+  log_media: stdout
+  log_level: info
+api:
+  server:
+    listen_uri: 127.0.0.1:8080
+    online_client: null
+prometheus:
+  enabled: true
+  level: full
+  listen_addr: 0.0.0.0
+  listen_port: 6060
+db_config:
+  flush:
+    max_age: 7d
+    max_items: 5000

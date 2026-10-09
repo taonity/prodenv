@@ -1,0 +1,201 @@
+{
+  "id": null, "uid": "web-security", "title": "Web Security", "schemaVersion": 39, "version": 1,
+  "tags": ["security", "infrastructure"], "timezone": "browser", "editable": true, "refresh": "",
+  "time": {"from": "now-15m", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+  "annotations": {"list": []},
+  "links": [
+    {"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
+    {"type": "link", "title": "Security alerts", "url": "/alerting/list?search=label%3Asecurity%3Dweb", "keepTime": true}
+  ],
+  "templating": {"list": [
+    {"name": "site", "label": "Site", "type": "query", "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"}, "query": "label_values({security=\"web\"}, site)", "refresh": 1, "regex": "/^(?!internal-health$).*/", "multi": true, "includeAll": true, "allValue": ".*", "current": {"text": "All", "value": "$__all"}},
+    {"name": "source", "label": "Source IP prefix", "type": "textbox", "query": "", "current": {"text": "", "value": ""}}
+  ]},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Security alerts", "gridPos": {"x": 0, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Server-wide firing security alerts. CrowdSec is observation-only: detections do not block traffic. Missing monitoring is not proof of safety.",
+      "links": [{"title": "All security alerts", "url": "/alerting/list?search=label%3Asecurity%3Dweb", "keepTime": true}],
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "count(ALERTS{security=\"web\",alertstate=\"firing\"}) or vector(0)", "instant": true}]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Requests", "gridPos": {"x": 6, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "No events", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "sum(count_over_time({security=\"web\",site=~`${site:regex}`,site!=\"internal-health\"} | json | source_ip=~`${source:regex}.*` | __error__=\"\" [$__range]))", "queryType": "instant"}]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Edge rejected", "gridPos": {"x": 12, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Nginx closed the HTTP connection with its internal status 444. Other edge responses are not automatically classified as blocked.",
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "No events", "color": {"mode": "fixed", "fixedColor": "orange"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "sum(count_over_time({security=\"web\",site=~`${site:regex}`,outcome=\"edge_rejected\"} | json | source_ip=~`${source:regex}.*` | __error__=\"\" [$__range]))", "queryType": "instant"}]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Upstream attempts", "gridPos": {"x": 18, "y": 0, "w": 6, "h": 3},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Nginx selected an upstream. This includes connection failures and does not prove application execution or exploit success. Cached responses may require no upstream attempt.",
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "No events", "color": {"mode": "fixed", "fixedColor": "cyan"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "sum(count_over_time({security=\"web\",site=~`${site:regex}`,outcome=\"upstream\"} | json | source_ip=~`${source:regex}.*` | __error__=\"\" [$__range]))", "queryType": "instant"}]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "HTTP responses", "gridPos": {"x": 0, "y": 15, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "fieldConfig": {"defaults": {"unit": "reqps", "min": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "sum by (status) (rate({security=\"web\",site=~`${site:regex}`,site!=\"internal-health\"} | json | source_ip=~`${source:regex}.*` | __error__=\"\" [$__interval]))", "legendFormat": "HTTP {{status}}", "queryType": "range"}]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "CrowdSec detections", "gridPos": {"x": 12, "y": 15, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Actual CrowdSec alerts by scenario in each chart interval. A detection can contain several contributing events; this is not a request or ban count.",
+      "fieldConfig": {"defaults": {"decimals": 0, "min": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "sum by (scenario) (count_over_time({security=\"crowdsec\"} | json scenario, sites, source_ip | sites=~`.*\"(${site:regex})\".*` | source_ip=~`${source:regex}.*` | __error__=\"\" [$__interval]))", "legendFormat": "{{scenario}}", "queryType": "range"}]
+    },
+    {
+      "id": 7, "type": "bargauge", "title": "Detections by site", "gridPos": {"x": 0, "y": 22, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Detection counts, not request counts. Sites come only from Nginx-selected sites in contributing events. Alerts with several sites count once under Multiple sites; missing evidence is Unknown. A site filter matches any site in the evidence.",
+      "fieldConfig": {"defaults": {"displayName": "${__field.name}", "decimals": 0, "min": 0, "color": {"mode": "continuous-GrYlRd"}}, "overrides": []},
+      "transformations": [{"id": "rowsToFields", "options": {"mappings": [{"fieldName": "site", "handlerKey": "field.name"}, {"fieldName": "Value #A", "handlerKey": "field.value"}]}}],
+      "options": {"orientation": "horizontal", "displayMode": "basic", "namePlacement": "left", "sizing": "manual", "minVizHeight": 24, "maxVizHeight": 40, "text": {"titleSize": 12, "valueSize": 16}, "showUnfilled": true, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "topk(8, sum by (site) (count_over_time({security=\"crowdsec\"} | json site, sites, source_ip | sites=~`.*\"(${site:regex})\".*` | source_ip=~`${source:regex}.*` | __error__=\"\" [$__range])))", "legendFormat": "{{site}}", "queryType": "instant"}]
+    },
+    {
+      "id": 8, "type": "bargauge", "title": "Detections by source", "gridPos": {"x": 12, "y": 22, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Actual CrowdSec detection counts by source IP. One detection can contain many events; not every request from that IP is malicious. IP addresses identify connecting infrastructure, not a person. No external reputation sharing is enabled.",
+      "fieldConfig": {"defaults": {"displayName": "${__field.name}", "decimals": 0, "min": 0, "color": {"mode": "continuous-BlYlRd"}}, "overrides": []},
+      "transformations": [{"id": "rowsToFields", "options": {"mappings": [{"fieldName": "source_ip", "handlerKey": "field.name"}, {"fieldName": "Value #A", "handlerKey": "field.value"}]}}],
+      "options": {"orientation": "horizontal", "displayMode": "basic", "namePlacement": "left", "sizing": "manual", "minVizHeight": 24, "maxVizHeight": 40, "text": {"titleSize": 12, "valueSize": 16}, "showUnfilled": true, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "topk(8, sum by (source_ip) (count_over_time({security=\"crowdsec\"} | json sites, source_ip | sites=~`.*\"(${site:regex})\".*` | source_ip=~`${source:regex}.*` | __error__=\"\" [$__range])))", "legendFormat": "{{source_ip}}", "queryType": "instant"}]
+    },
+    {
+      "id": 9, "type": "marcusolsson-dynamictext-panel", "title": "CrowdSec alerts / latest 25", "gridPos": {"x": 0, "y": 3, "w": 24, "h": 12},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Native CrowdSec alerts from maintained detection scenarios, newest first. Up to 25 distinct alerts from the newest 100 records. Event counts refer to contributing events, not all requests by that IP. Sites come only from those events. Detection does not establish compromise, and no blocking is enabled. Unknown means no site evidence, not a guessed hostname.",
+      "options": {
+        "renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [], "afterRender": "",
+        "defaultContent": "<div class=\"activity-empty\">No matching detections</div>",
+        "content": "<div class=\"activity-list\">{{#each (detectionRows data)}}<a class=\"activity-entry\" href=\"{{href}}\" aria-label=\"Inspect {{scenario}} from {{source_ip}}\"><div class=\"activity-heading\"><strong>{{scenario}}</strong><span class=\"activity-count\">{{events_count}} events</span></div><div class=\"activity-origin\"><span>{{source_ip}}</span><span>{{siteLabel}}</span></div><div class=\"activity-outcome\"><time>{{timeLabel}}</time><span class=\"activity-open\">Inspect detection &rarr;</span></div></a>{{/each}}</div>",
+        "helpers": "context.handlebars.registerHelper('detectionRows', rows => {\n  const records = new Map();\n  for (const row of Array.isArray(rows) ? rows : []) {\n    let record;\n    try { record = JSON.parse(row.Line || row.line || row.body || '{}'); } catch (_) { continue; }\n    if (record.event !== 'crowdsec_alert' || !record.id) continue;\n    const start = Date.parse(record.start_at), stop = Date.parse(record.stop_at);\n    if (!Number.isFinite(start) || !Number.isFinite(stop)) continue;\n    const params = new URLSearchParams({from: String(start - 30000), to: String(stop + 30000), refresh: '', 'var-alert': record.id, 'var-source': record.source_scope === 'Ip' ? record.source_ip : '__not_an_ip__'});\n    records.set(record.id, {...record, stop, siteLabel: (record.sites || ['Unknown']).map(site => site === '_' ? 'Catch-all' : site).join(', '), timeLabel: new Date(stop).toLocaleString(), href: '/d/web-requests?' + params.toString()});\n  }\n  return Array.from(records.values()).sort((left, right) => right.stop - left.stop || left.id.localeCompare(right.id)).slice(0, 25);\n});",
+        "styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .activity-list { width: 100%; padding: 0 8px; box-sizing: border-box; } .activity-entry { display: block; padding: 12px 10px; color: inherit; text-decoration: none; border-bottom: 1px solid rgba(127,127,127,.3); border-left: 3px solid transparent; overflow-wrap: anywhere; } .activity-entry:hover, .activity-entry:focus-visible { background: rgba(127,127,127,.12); } .activity-entry:focus-visible { outline: 2px solid #5794f2; outline-offset: -2px; } .activity-priority { border-left-color: #ffb357; } .activity-heading, .activity-origin, .activity-outcome { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; min-width: 0; } .activity-heading { justify-content: space-between; } .activity-heading strong { font-size: 14px; line-height: 20px; min-width: 0; overflow-wrap: anywhere; } .activity-count { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; } .activity-origin { margin-top: 4px; font-size: 12px; line-height: 18px; opacity: .8; } .activity-outcome { margin-top: 4px; font-size: 12px; line-height: 18px; } .activity-review { color: #ffb357; } .activity-open { margin-left: auto; color: #5794f2; } .activity-empty { padding: 16px; }"
+      },
+      "targets": [{"refId": "A", "expr": "{security=\"crowdsec\"} | json sites, source_ip | sites=~`.*\"(${site:regex})\".*` | source_ip=~`${source:regex}.*` | __error__=\"\"", "queryType": "range", "maxLines": 100}]
+    },
+    {
+      "id": 24, "type": "row", "title": "CrowdSec detection logs", "collapsed": true, "gridPos": {"x": 0, "y": 29, "w": 24, "h": 1},
+      "panels": [{
+      "id": 10, "type": "logs", "title": "CrowdSec alert records", "gridPos": {"x": 0, "y": 30, "w": 24, "h": 7},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Structured native alerts, filtered by the selected site and source. The main list presents these same detections; engine diagnostic logs are separate.",
+      "options": {"showTime": false, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "prettifyLogMessage": false, "sortOrder": "Descending", "dedupStrategy": "none"},
+      "targets": [{"refId": "A", "expr": "{security=\"crowdsec\"} | json sites, source_ip, scenario, stop_at, events_count | sites=~`.*\"(${site:regex})\".*` | source_ip=~`${source:regex}.*` | __error__=\"\" | line_format `{{.stop_at}} | {{.source_ip}} | {{.scenario}} | {{.events_count}} contributing events | {{.sites}}`", "queryType": "range", "maxLines": 100}]
+      }]
+    },
+    {
+      "id": 23, "type": "row", "title": "HTTP request logs", "collapsed": true, "gridPos": {"x": 0, "y": 30, "w": 24, "h": 1},
+      "panels": [{
+      "id": 11, "type": "logs", "title": "HTTP request logs", "gridPos": {"x": 0, "y": 31, "w": 24, "h": 10},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "links": [{"title": "Expand logs", "url": "/d/web-security?viewPanel=11&from=${__from}&to=${__to}&refresh=&${site:queryparam}&var-source=${source:percentencode}"}],
+      "options": {"showTime": false, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "prettifyLogMessage": false, "sortOrder": "Descending", "dedupStrategy": "none"},
+      "targets": [{"refId": "A", "expr": "{security=\"web\",site=~`${site:regex}`,site!=\"internal-health\"} | json | source_ip=~`${source:regex}.*` | __error__=\"\" | line_format `{{.time}} | {{.source_ip}} | {{.host}} -> {{.site}} | {{.method}} {{.path}} | {{.status}} | {{.outcome}} | upstream {{.upstream}} / {{.upstream_status}} | {{.duration}}s | {{.bytes}} bytes`", "queryType": "range", "maxLines": 100}]
+      }]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Detection health", "gridPos": {"x": 0, "y": 31, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Server-wide collector health, independent of site/source filters. Zero means scrape failure; a missing series is unknown. Heartbeat and parser stall alerts cover services that are running but not processing logs.",
+      "fieldConfig": {"defaults": {"min": 0, "max": 1, "decimals": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "up{job=~\"crowdsec|promtail|loki\"}", "legendFormat": "{{job}}", "range": true}]
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Response latency / p95", "gridPos": {"x": 12, "y": 31, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Approximate histogram p95 for selected sites. Source-IP filter does not apply to aggregate metrics.",
+      "fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, site) (rate(nginx_security_duration_seconds_bucket{site=~`${site:regex}`,site!=\"internal-health\"}[5m])))", "legendFormat": "{{site}}", "range": true}]
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Response bandwidth", "gridPos": {"x": 0, "y": 37, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Response-body bytes for selected sites. Source-IP filter does not apply to aggregate metrics.",
+      "fieldConfig": {"defaults": {"unit": "Bps", "min": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "sum by (site) (rate(nginx_security_response_bytes_total{site=~`${site:regex}`,site!=\"internal-health\"}[5m]))", "legendFormat": "{{site}}", "range": true}]
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Scenario detections", "gridPos": {"x": 12, "y": 37, "w": 12, "h": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Server-wide detections per five-minute window. These are detections, not bans; no source/site filter applies.",
+      "fieldConfig": {"defaults": {"min": 0, "decimals": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "sum by (name) (increase(cs_bucket_overflowed_total{job=\"crowdsec\"}[5m]))", "legendFormat": "{{name}}", "range": true}]
+    },
+    {
+      "id": 16, "type": "stat", "title": "Firewall evidence", "gridPos": {"x": 0, "y": 43, "w": 8, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Existing UFW kernel journal records from the last five minutes only. Unknown can mean quiet traffic, disabled logging or unavailable journal access. No logging rules are installed. Firewall and journal rate limits can omit packets.",
+      "fieldConfig": {"defaults": {"noValue": "Unknown", "mappings": [{"type": "value", "options": {"0": {"text": "Unknown", "color": "gray"}, "1": {"text": "Observed", "color": "blue"}}}]}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "max(prodenv_health_firewall_observation_available{job=\"node\"}) and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "instant": true}]
+    },
+    {
+      "id": 17, "type": "stat", "title": "Published bindings", "gridPos": {"x": 8, "y": 43, "w": 8, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Docker bindings on non-loopback addresses, including private and wildcard addresses. IPv4 and IPv6 bindings count separately. This does not establish Internet reachability or firewall policy.",
+      "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "orange"}}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "(count(prodenv_health_container_published_port{job=\"node\",binding=\"non_loopback\"}) or vector(0)) and on() (max(prodenv_health_collector_success{collector=\"system\"}) == 1) and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "instant": true}]
+    },
+    {
+      "id": 18, "type": "stat", "title": "Firewall sample", "gridPos": {"x": 16, "y": 43, "w": 8, "h": 3},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "The collector reads at most 5,001 recent matching records and processes at most 5,000. Within limit does not imply all network packets were logged.",
+      "fieldConfig": {"defaults": {"noValue": "Unknown", "mappings": [{"type": "value", "options": {"0": {"text": "Within limit", "color": "blue"}, "1": {"text": "Truncated", "color": "orange"}}}]}, "overrides": []},
+      "options": {"colorMode": "value", "graphMode": "none", "textMode": "value", "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+      "targets": [{"refId": "A", "expr": "max(prodenv_health_firewall_sample_truncated{job=\"node\"}) and on() (max(prodenv_health_firewall_observation_available{job=\"node\"}) == 1) and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "instant": true}]
+    },
+    {
+      "id": 19, "type": "timeseries", "title": "Logged firewall drops / 5m", "gridPos": {"x": 0, "y": 46, "w": 24, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "description": "Overlapping five-minute samples of existing UFW BLOCK/REJECT records, not packet totals. Configured destination ports have individual series; all others are grouped as other. Gaps mean no evidence, not zero drops.",
+      "fieldConfig": {"defaults": {"min": 0, "decimals": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [{"refId": "A", "expr": "prodenv_health_firewall_logged_drops_5m{job=\"node\"} and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "{{protocol}} / {{port}}", "range": true}]
+    },
+    {
+      "id": 20, "type": "row", "title": "Port inventory", "collapsed": true, "gridPos": {"x": 0, "y": 53, "w": 24, "h": 1},
+      "panels": [
+        {
+          "id": 21, "type": "table", "title": "Docker published bindings", "gridPos": {"x": 0, "y": 54, "w": 24, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "Actual Docker bindings, including loopback. Network firewall/NAT policy and external reachability are not inferred.",
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "fieldConfig": {"defaults": {"custom": {"cellOptions": {"type": "auto", "wrapText": true}}}, "overrides": []},
+          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "job": true, "instance": true, "binding": true}, "renameByName": {"name": "Container", "address": "Bind address", "port": "Host port", "target": "Container port"}}}],
+          "targets": [{"refId": "A", "expr": "prodenv_health_container_published_port{job=\"node\"} and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"}]
+        },
+        {
+          "id": 22, "type": "table", "title": "Host listeners", "gridPos": {"x": 0, "y": 62, "w": 24, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "Prometheus"},
+          "description": "Host TCP/UDP listeners from ss. Docker NAT bindings may not appear as sockets; inspect both inventories.",
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "fieldConfig": {"defaults": {"custom": {"cellOptions": {"type": "auto", "wrapText": true}}}, "overrides": []},
+          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "job": true, "instance": true}, "renameByName": {"address": "Bind address", "port": "Port", "protocol": "Protocol", "binding": "Binding scope"}}}],
+          "targets": [{"refId": "A", "expr": "prodenv_health_listening_port{job=\"node\"} and on() (time() - max(prodenv_health_last_run_timestamp_seconds{job=\"node\"}) < 600) and on() (min(up{job=\"node\"}) == 1)", "instant": true, "format": "table"}]
+        }
+      ]
+    }
+  ]
+}

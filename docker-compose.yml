@@ -39,6 +39,22 @@ services:
       loki:
         condition: service_healthy
 
+  crowdsec:
+    extends:
+      file: logging/crowdsec/docker-compose.yml
+      service: crowdsec
+    cpus: 0.50
+    mem_limit: 256m
+    memswap_limit: 384m
+    pids_limit: 256
+    networks:
+      - logging
+    depends_on:
+      nginx:
+        condition: service_started
+      loki:
+        condition: service_healthy
+
   minio:
     extends:
       file: logging/minio/docker-compose.yml
@@ -223,6 +239,9 @@ services:
      - nginx
  
 volumes:
+  crowdsec-config:
+  crowdsec-data:
+  promtail-positions:
   backrest-data:
   backrest-config:
   backrest-cache:

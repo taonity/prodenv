@@ -1,4 +1,5 @@
 {
+  "firewall_ports": [22, 80, 443, 3000],
   "ping_targets": ["1.1.1.1", "8.8.8.8"],
   "dns_target": "cloudflare.com",
   "http_targets": [

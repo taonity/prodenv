@@ -119,6 +119,44 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(collect.sample_difference(before, after), {
             "cpu_busy_ratio": 0.2, "cpu_steal_ratio": 0.2, "disk_bytes_per_second": 1024})
 
+    def test_security_listener_scope_and_bounded_firewall_labels(self):
+        listeners = "tcp LISTEN 0 128 127.0.0.1:9000 0.0.0.0:*\ntcp LISTEN 0 128 [::]:443 [::]:*\n"
+        messages = ["[UFW BLOCK] SRC=198.51.100.1 PROTO=TCP DPT=443",
+                    "[UFW REJECT] SRC=198.51.100.1 PROTO=UDP DPT=54321"]
+        journal = "\n".join(json.dumps({"MESSAGE": message}) for message in messages)
+        metrics = collect.Metrics()
+        with patch.object(collect, "command", side_effect=[(listeners, ""), (journal, "")]):
+            collect.collect_security(metrics, {})
+        rendered = metrics.render()
+        self.assertIn('binding="loopback",port="9000"', rendered)
+        self.assertIn('binding="non_loopback",port="443"', rendered)
+        self.assertIn('firewall_logged_drops_5m{port="other",protocol="UDP"} 1', rendered)
+        self.assertIn('firewall_source_count_5m 1', rendered)
+        self.assertNotIn("198.51.100.1", rendered)
+
+    def test_no_firewall_records_are_unknown_not_zero_drops(self):
+        metrics = collect.Metrics()
+        with patch.object(collect, "command", return_value=("", "")):
+            collect.collect_security(metrics, {})
+        self.assertIn("firewall_observation_available 0", metrics.render())
+        self.assertNotIn("firewall_logged_drops", metrics.render())
+
+    def test_firewall_sample_is_bounded_and_marked(self):
+        record = json.dumps({"MESSAGE": "[UFW BLOCK] SRC=198.51.100.1 PROTO=TCP DPT=80"})
+        metrics = collect.Metrics()
+        with patch.object(collect, "command", side_effect=[("", ""), ((record + "\n") * 5001, "")]):
+            collect.collect_security(metrics, {})
+        self.assertIn('firewall_logged_drops_5m{port="80",protocol="TCP"} 5000', metrics.render())
+        self.assertIn("firewall_sample_truncated 1", metrics.render())
+
+    def test_published_ports_include_containers_without_restart_policy(self):
+        container = {"Name": "/temporary", "HostConfig": {"RestartPolicy": {"Name": "no"}},
+                     "NetworkSettings": {"Ports": {"3000/tcp": [{"HostIp": "0.0.0.0", "HostPort": "3000"}]}}}
+        metrics = collect.Metrics()
+        with patch.object(collect, "command", side_effect=[("", ""), ("abc", ""), (json.dumps([container]), "")]):
+            collect.collect_system(metrics, {})
+        self.assertIn('container_published_port{address="0.0.0.0",binding="non_loopback",name="temporary",port="3000",target="3000/tcp"} 1', metrics.render())
+
     def test_host_network_counters_exclude_container_interfaces(self):
         with tempfile.TemporaryDirectory() as directory:
             proc = Path(directory)

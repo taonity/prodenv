@@ -1,0 +1,33 @@
+{
+  "id": null, "uid": "web-requests", "title": "CrowdSec Detection Details", "schemaVersion": 39, "version": 1,
+  "tags": ["security", "infrastructure"], "timezone": "browser", "editable": true, "refresh": "",
+  "time": {"from": "now-15m", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m"]},
+  "annotations": {"list": []},
+  "links": [{"type": "link", "title": "Web Security", "url": "/d/web-security", "keepTime": true}],
+  "templating": {"list": [
+    {"name": "alert", "type": "textbox", "hide": 2, "query": "__select__", "current": {"text": "__select__", "value": "__select__"}},
+    {"name": "source", "label": "Related source IP", "type": "textbox", "query": "__select__", "current": {"text": "__select__", "value": "__select__"}}
+  ]},
+  "panels": [
+    {
+      "id": 1, "type": "marcusolsson-dynamictext-panel", "title": "CrowdSec evidence", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 15},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Contributing events stored in the actual CrowdSec alert. Evidence may be sampled or limited by the scenario. Other requests by the same IP are not automatically contributing events. The fingerprint identifies the exported notification, not a database ID.",
+      "options": {
+        "renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"], "editor": {"language": "html", "format": "auto"}, "externalStyles": [], "contentPartials": [], "afterRender": "",
+        "defaultContent": "<div class=\"evidence-empty\">No detection in this window</div>",
+        "content": "{{#each (evidenceRows data)}}<div class=\"evidence-summary\"><h3>{{scenario}}</h3><p>{{source_ip}} | {{siteLabel}}</p><p>{{startLabel}} to {{stopLabel}}</p><p>{{events_count}} contributing events | Observation only</p></div><div class=\"evidence-list\">{{#each events}}<article class=\"evidence-event\"><strong>{{method}} {{path}}</strong><p>HTTP {{status}} | {{site}}</p><time>{{time}}</time></article>{{/each}}</div>{{/each}}",
+        "helpers": "context.handlebars.registerHelper('evidenceRows', rows => {\n  for (const row of Array.isArray(rows) ? rows : []) {\n    let record;\n    try { record = JSON.parse(row.Line || row.line || row.body || '{}'); } catch (_) { continue; }\n    if (record.event !== 'crowdsec_alert') continue;\n    const events = ((record.alert || {}).events || []).map(event => {\n      const fields = Object.fromEntries((event.meta || []).map(item => [item.key, item.value]));\n      return {method: fields.http_verb || '', path: fields.http_path || 'Path unavailable', status: fields.http_status || 'Unknown', site: fields.nginx_site === '_' ? 'Catch-all' : fields.nginx_site || 'Unknown', time: fields.timestamp || event.timestamp};\n    });\n    return [{...record, siteLabel: (record.sites || ['Unknown']).map(site => site === '_' ? 'Catch-all' : site).join(', '), startLabel: new Date(record.start_at).toLocaleString(), stopLabel: new Date(record.stop_at).toLocaleString(), events}];\n  }\n  return [];\n});",
+        "styles": "& { overflow-x: hidden; } .dt-row { padding: 0; min-width: 0; } .evidence-summary, .evidence-event { padding: 10px 12px; overflow-wrap: anywhere; } .evidence-summary { border-bottom: 2px solid rgba(127,127,127,.3); } .evidence-summary h3 { font-size: 16px; line-height: 22px; letter-spacing: 0; margin: 0 0 6px; } .evidence-summary p, .evidence-event p { font-size: 12px; line-height: 18px; margin: 3px 0; } .evidence-event { border-bottom: 1px solid rgba(127,127,127,.3); } .evidence-event strong { font-size: 13px; line-height: 20px; } .evidence-event time { font-size: 12px; opacity: .7; } .evidence-empty { padding: 16px; }"
+      },
+      "targets": [{"refId": "A", "expr": "{security=\"crowdsec\"} | json id | id=${alert:doublequote} | __error__=\"\"", "queryType": "range", "maxLines": 1}]
+    },
+    {
+      "id": 2, "type": "logs", "title": "Related HTTP requests / newest 100", "gridPos": {"x": 0, "y": 15, "w": 24, "h": 12},
+      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "description": "Context only: requests by this exact IP during the detection interval plus 30 seconds on either side. These can include legitimate traffic. CrowdSec's actual contributing events are shown separately above. The fixed window is paused by default.",
+      "options": {"showTime": false, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "prettifyLogMessage": false, "sortOrder": "Descending", "dedupStrategy": "none"},
+      "targets": [{"refId": "A", "expr": "{security=\"web\",site!=\"internal-health\"} | json | source_ip=${source:doublequote} | __error__=\"\" | line_format `{{.time}} | {{.host}} | {{.method}} {{.path}} | HTTP {{.status}} | {{.source_ip}} | upstream {{.upstream}} / {{.upstream_status}} | {{.duration}}s | {{.bytes}} bytes`", "queryType": "range", "maxLines": 100}]
+    }
+  ]
+}
