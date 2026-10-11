@@ -1,0 +1,16 @@
+{
+  "plan": "all-project-exports",
+  "intervalDays": 90,
+  "checkIntervalSeconds": 21600,
+  "entries": [
+    {
+      "project": "fullstack-starter-prod",
+      "path": "/userdata/fullstack-starter-prod/postgres",
+      "maxDumpBytes": 8589934592,
+      "freeSpaceMultiplier": 6,
+      "minimumFreeBytes": 10737418240,
+      "restoreTimeoutSeconds": 14400,
+      "importTimeoutSeconds": 14400
+    }
+  ]
+}

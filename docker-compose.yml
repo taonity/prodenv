@@ -175,6 +175,7 @@ services:
     pids_limit: 256
     networks:
       - nginx
+      - backup-validation
 
   backrest-bootstrap:
     extends:
@@ -186,6 +187,36 @@ services:
     pids_limit: 256
     networks:
       - nginx
+
+  backrest-restore-db:
+    extends:
+      file: backup/backrest/docker-compose.yml
+      service: backrest-restore-db
+    cpus: 1.00
+    mem_limit: 768m
+    memswap_limit: 1152m
+    pids_limit: 256
+    networks:
+      - backup-validation
+
+  backrest-restore-validator:
+    extends:
+      file: backup/backrest/docker-compose.yml
+      service: backrest-restore-validator
+    build:
+      context: .
+      dockerfile: backup/backrest/Dockerfile.restore-validator
+    cpus: 1.00
+    mem_limit: 256m
+    memswap_limit: 384m
+    pids_limit: 128
+    networks:
+      - backup-validation
+    depends_on:
+      backrest:
+        condition: service_healthy
+      backrest-restore-db:
+        condition: service_healthy
 
   portainer:
     extends:
@@ -250,6 +281,7 @@ volumes:
     name: prodenv-backup-staging
   backup-restore:
     name: prodenv-backup-restore
+  backup-validation-db:
   monitoring-textfile:
     name: prodenv-monitoring-textfile
   minio-data:
@@ -260,6 +292,8 @@ volumes:
 networks:
   nginx:
   logging:
+  backup-validation:
+    internal: true
   prodenv-shared-internal:
     external: true
   artist-insight-shared:

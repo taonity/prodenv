@@ -54,3 +54,54 @@ services:
     depends_on:
       backrest:
         condition: service_healthy
+
+  backrest-restore-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: restore-validation-only
+    volumes:
+      - backup-validation-db:/var/lib/postgresql/data
+    networks:
+      - backup-validation
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backrest-restore-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile.restore-validator
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BACKREST_URL: http://backrest:9898
+      BACKREST_ADMIN_PASSWORD_FILE: /run/secrets/backrest_admin_password
+      RESTORE_VALIDATOR_CONFIG: /validator/config.json
+      RESTORE_ROOT: /restore/automated
+      METRICS_DIRECTORY: /metrics
+      PGHOST: backrest-restore-db
+      PGPASSWORD: restore-validation-only
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - backup-restore:/restore
+      - monitoring-textfile:/metrics
+      - ./restore_validator.py:/validator/restore_validator.py:ro
+      - ./restore-validation.json:/validator/config.json:ro
+    secrets:
+      - source: backrest-admin-password
+        target: backrest_admin_password
+    networks:
+      - backup-validation
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backrest:
+        condition: service_healthy
+      backrest-restore-db:
+        condition: service_healthy

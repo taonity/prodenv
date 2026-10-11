@@ -131,9 +131,16 @@ groups:
           summary: "The host package index has not been refreshed for three days"
           description: "Check apt-daily.timer; an old package index cannot establish that security updates are current."
       - alert: BackupRestoreOverdue
-        expr: (time() - prodenv_backup_last_success_timestamp_seconds{job="node",operation="restore"} > 30 * 86400 or absent(prodenv_backup_last_success_timestamp_seconds{job="node",operation="restore"})) and on() (max(up{job="node"}) == 1)
+        expr: ((time() - prodenv_backup_restore_validation_last_success_timestamp_seconds{job="node"} > 100 * 86400) or (prodenv_backup_restore_validation_enabled{job="node"} unless on(instance,project) prodenv_backup_restore_validation_last_success_timestamp_seconds{job="node"})) and on() (max(up{job="node"}) == 1)
+        for: 24h
+        labels: {severity: warning}
+        annotations:
+          summary: "Restore validation for {{ $labels.project }} is overdue"
+          description: "The whitelisted database has no successful remote restore and isolated import within the quarterly validation window."
+      - alert: BackupRestoreValidationFailed
+        expr: (prodenv_backup_restore_validation_last_attempt_success{job="node"} == 0) and on(instance,project) (time() - prodenv_backup_restore_validation_last_attempt_timestamp_seconds{job="node"} < 7 * 86400)
         for: 1h
         labels: {severity: warning}
         annotations:
-          summary: "No recent successful isolated database restore is recorded"
-          description: "Run validate-postgres-restore.sh on a restored backup. Evidence covers only that restore directory, not every database."
+          summary: "Restore validation failed for {{ $labels.project }}"
+          description: "Inspect backrest-restore-validator logs. The production database was not touched."
