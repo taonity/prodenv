@@ -6,13 +6,24 @@ function sampleResponse(request, empty = false) {
   const table = (refId, rows) => rows.map(({Value, ...labels}) => ({schema: {refId, meta: {type: 'numeric-multi', typeVersion: [0, 1], custom: {resultType: 'vector'}}, fields: [
     {name: 'Time', type: 'time'}, {name: 'Value', type: 'number', labels},
   ]}, data: {values: [[Date.now()], [Value]]}}));
+  const stat = (query, Value) => [{schema: {refId: query.refId, meta: {type: 'numeric-multi', typeVersion: [0, 1], custom: {resultType: 'vector'}}, fields: [
+    {name: 'Time', type: 'time'}, {name: 'Value', type: 'number', labels: {}, config: {displayNameFromDS: query.legendFormat}},
+  ]}, data: {values: [[Date.now()], [Value]]}}];
+  const quickResources = new Map([
+    ['CPU busy', 42], ['System load', 35], ['CPU cores', 4], ['Uptime', 86400],
+    ['RAM used', 62], ['RAM total', 8 * 1024 ** 3], ['Swap used', 12], ['Swap total', 2 * 1024 ** 3],
+    ['Root used', 54], ['Root total', 80 * 1024 ** 3],
+    ['CPU', 0.02], ['Memory', 0.01], ['I/O', 0.03], ['IRQ', 0.005],
+  ]);
   const labels = index => ({alertname: 'ContainerWithoutMemoryLimit', severity: index === 0 ? 'critical' : 'warning', demo: 'sample', container_label_com_docker_compose_project: `sample-project-${index}-stage`, container_label_com_docker_compose_service: 'backend', container_label_com_docker_compose_container_number: '1', name: `sample-project-${index}-stage-backend-1`});
     const results = {};
     const pending = [];
     for (const query of request.queries || []) {
       const expression = query.expr || '';
       let frames;
-      if (expression.startsWith('ALERTS{')) {
+      if (query.instant && quickResources.has(query.legendFormat)) {
+        frames = stat(query, quickResources.get(query.legendFormat));
+      } else if (expression.startsWith('ALERTS{')) {
         if (empty) frames = [];
         else if (query.instant) frames = table(query.refId, Array.from({length: 24}, (_, index) => ({...labels(index), Value: 1})));
         else {
@@ -75,6 +86,21 @@ module.exports = async function checkMonitoringLayout(page, origin) {
     for (const width of [1440, 360, 320]) {
       await page.setViewportSize({width, height: 960});
       await page.goto(`${origin}/d/mobile-server?from=now-24h&to=now`);
+      for (const [id, labels] of Object.entries({
+        5: ['CPU', 'Busy', 'Load', 'Cores', 'Memory', 'RAM used', 'RAM total', 'Swap used', 'Swap total', 'Root', 'Used', 'Total'],
+        24: ['CPU', 'Memory', 'I/O', 'IRQ'],
+      })) {
+        await panel(id).scrollIntoViewIfNeeded();
+        await page.waitForFunction(({id, label}) => document.querySelector(`[data-griditem-key="grid-item-${id}"]`)?.innerText.includes(label), {id, label: labels[0]});
+        const text = await panel(id).innerText();
+        for (const label of labels) assert(text.includes(label), `Panel ${id} must show ${label}`);
+        const overflow = await panel(id).evaluate(element => ({
+          horizontal: element.scrollWidth > element.clientWidth + 2,
+          vertical: element.scrollHeight > element.clientHeight + 2,
+          nested: Array.from(element.querySelectorAll('*')).some(child => ['auto', 'scroll'].includes(getComputedStyle(child).overflowY) && child.clientHeight > 0 && child.scrollHeight > child.clientHeight + 2),
+        }));
+        assert.deepEqual(overflow, {horizontal: false, vertical: false, nested: false});
+      }
       const firing = await inspect(7, '.alert-item', 24);
       assert((await panel(7).innerText()).includes('sample-project-23-stage-backend-1'));
       const history = await inspect(9, '.alert-item', 24);
@@ -161,6 +187,6 @@ if (require.main === module) {
   });
   server.listen(Number(process.env.MONITORING_PREVIEW_PORT || 0), '127.0.0.1', () => {
     console.log(`Sample preview: http://127.0.0.1:${server.address().port}/d/mobile-server`);
-    console.log('Synthetic alerts, filesystems and container health only; upstream production settings are unchanged.');
+    console.log('Synthetic quick resources, alerts, filesystems and container health; upstream production settings are unchanged.');
   });
 }

@@ -49,7 +49,7 @@
 			]
 		},
 		{
-			"id": 3, "type": "marcusolsson-dynamictext-panel", "title": "Production share of server", "gridPos": {"x": 0, "y": 22, "w": 24, "h": 8},
+			"id": 3, "type": "marcusolsson-dynamictext-panel", "title": "Production share of server", "gridPos": {"x": 0, "y": 21, "w": 24, "h": 8},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Compare production projects by their use of this server. CPU share is usage divided by all host CPU cores; RAM share is container working set divided by total host RAM, not container limits. Infrastructure, staging and OS memory are excluded, so these shares do not add up to the host usage above. Missing metrics are Unknown, not zero. This is resource usage, not application health.",
 			"fieldConfig": {"defaults": {}, "overrides": []},
@@ -72,51 +72,32 @@
 			]
 		},
 		{
-			"id": 5, "type": "stat", "title": "CPU quick view", "gridPos": {"x": 0, "y": 11, "w": 6, "h": 5},
+			"id": 5, "type": "marcusolsson-dynamictext-panel", "title": "Host resources", "gridPos": {"x": 0, "y": 11, "w": 18, "h": 4},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"description": "CPU busy excludes idle time. System load is the one-minute runnable or uninterruptible load divided by the number of vCPUs; it is not CPU utilization.",
-			"fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [
-				{"matcher": {"id": "byName", "options": "CPU cores"}, "properties": [{"id": "unit", "value": "short"}, {"id": "decimals", "value": 0}]},
-				{"matcher": {"id": "byName", "options": "Uptime"}, "properties": [{"id": "unit", "value": "dtdurations"}, {"id": "decimals", "value": 0}]}
-			]},
-			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 11, "valueSize": 17}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
+			"description": "CPU busy excludes idle, I/O wait and steal. Load is the one-minute system load divided by vCPU count. RAM used relies on kernel-available memory. Root usage is space available to unprivileged processes.",
+			"fieldConfig": {"defaults": {}, "overrides": []},
+			"options": {
+				"renderMode": "data", "wrap": false, "editors": ["helpers", "styles", "afterRender"],
+				"defaultContent": "<div class=\"quick-resources\"><article class=\"resource-cpu\"><h3>CPU</h3><dl><div><dt>Busy</dt><dd>{{percent \"A\"}}</dd></div><div><dt>Load</dt><dd>{{percent \"B\"}}</dd></div><div><dt>Cores</dt><dd>{{number \"C\"}}</dd></div></dl></article><article><h3>Memory</h3><dl><div><dt>RAM used</dt><dd>{{percent \"E\"}}</dd></div><div><dt>RAM total</dt><dd>{{bytes \"F\"}}</dd></div><div><dt>Swap used</dt><dd>{{percent \"G\"}}</dd></div><div><dt>Swap total</dt><dd>{{bytes \"H\"}}</dd></div></dl></article><article class=\"resource-root\"><h3>Root</h3><dl><div><dt>Used</dt><dd>{{percent \"I\"}}</dd></div><div><dt>Total</dt><dd>{{bytes \"J\"}}</dd></div></dl></article></div>",
+				"content": "<div class=\"quick-resources\"><article class=\"resource-cpu\"><h3>CPU</h3><dl><div><dt>Busy</dt><dd>{{percent \"A\"}}</dd></div><div><dt>Load</dt><dd>{{percent \"B\"}}</dd></div><div><dt>Cores</dt><dd>{{number \"C\"}}</dd></div></dl></article><article><h3>Memory</h3><dl><div><dt>RAM used</dt><dd>{{percent \"E\"}}</dd></div><div><dt>RAM total</dt><dd>{{bytes \"F\"}}</dd></div><div><dt>Swap used</dt><dd>{{percent \"G\"}}</dd></div><div><dt>Swap total</dt><dd>{{bytes \"H\"}}</dd></div></dl></article><article class=\"resource-root\"><h3>Root</h3><dl><div><dt>Used</dt><dd>{{percent \"I\"}}</dd></div><div><dt>Total</dt><dd>{{bytes \"J\"}}</dd></div></dl></article></div>",
+				"helpers": "const latest = refId => { const frame = (context.panelData && context.panelData.series || []).find(series => series.refId === refId); const field = frame && frame.fields.find(candidate => candidate.type === 'number'); return field && field.values.length ? Number(field.values[field.values.length - 1]) : NaN; }; const valid = value => Number.isFinite(value); context.handlebars.registerHelper('percent', refId => { const value = latest(refId); return valid(value) ? value.toFixed(1) + '%' : 'Unknown'; }); context.handlebars.registerHelper('number', refId => { const value = latest(refId); return valid(value) ? value.toFixed(0) : 'Unknown'; }); context.handlebars.registerHelper('bytes', refId => { const value = latest(refId); return !valid(value) ? 'Unknown' : value >= 1073741824 ? (value / 1073741824).toFixed(1) + ' GiB' : (value / 1048576).toFixed(0) + ' MiB'; });",
+				"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.quick-resources');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };",
+				"styles": "& { overflow-x:hidden; } .dt-row { padding:0; min-width:0; } .quick-resources { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:7px 8px; box-sizing:border-box; } .quick-resources article { min-width:0; padding:0 8px; } .quick-resources article + article { border-left:1px solid rgba(127,127,127,.3); } .quick-resources h3 { margin:0 0 5px; font-size:13px; line-height:18px; letter-spacing:0; } .quick-resources dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 10px; margin:0; } .quick-resources dl div { min-width:0; } .quick-resources dt,.quick-resources dd { min-width:0; margin:0; letter-spacing:0; overflow-wrap:anywhere; } .quick-resources dt { font-size:11px; line-height:13px; opacity:.75; } .quick-resources dd { font-size:14px; line-height:18px; font-variant-numeric:tabular-nums; } @media (max-width:600px) { .quick-resources { grid-template-columns:1fr; gap:0; padding:2px 8px; } .quick-resources article { display:grid; grid-template-columns:48px minmax(0,1fr); gap:6px; align-items:start; padding:5px 0; } .quick-resources article + article { border-left:0; border-top:1px solid rgba(127,127,127,.3); } .quick-resources h3 { margin:0; } .quick-resources dl { grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px 6px; } .quick-resources .resource-cpu dl { grid-template-columns:repeat(3,minmax(0,1fr)); } .quick-resources .resource-root dl { grid-template-columns:repeat(2,minmax(0,1fr)); } }"
+			},
 			"targets": [
 				{"refId": "A", "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m]))) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU busy", "instant": true},
 				{"refId": "B", "expr": "100 * max(node_load1{job=\"node\"}) / scalar(count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "System load", "instant": true},
 				{"refId": "C", "expr": "count(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "CPU cores", "instant": true},
-				{"refId": "D", "expr": "time() - max(node_boot_time_seconds{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Uptime", "instant": true}
+				{"refId": "E", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "instant": true},
+				{"refId": "F", "expr": "sum(node_memory_MemTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM total", "instant": true},
+				{"refId": "G", "expr": "100 * sum(node_memory_SwapTotal_bytes{job=\"node\"} - node_memory_SwapFree_bytes{job=\"node\"}) / clamp_min(sum(node_memory_SwapTotal_bytes{job=\"node\"}), 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap used", "instant": true},
+				{"refId": "H", "expr": "sum(node_memory_SwapTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap total", "instant": true},
+				{"refId": "I", "expr": "100 * (1 - min(node_filesystem_avail_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) / min(node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Root used", "instant": true},
+				{"refId": "J", "expr": "min(node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Root total", "instant": true}
 			]
 		},
 		{
-			"id": 8, "type": "stat", "title": "Memory quick view", "gridPos": {"x": 6, "y": 11, "w": 6, "h": 5},
-			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"description": "RAM used is total minus memory the kernel considers available, including reclaimable cache. Swap used can remain nonzero after memory pressure has ended.",
-			"fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [
-				{"matcher": {"id": "byRegexp", "options": "^(RAM total|Swap total)$"}, "properties": [{"id": "unit", "value": "bytes"}, {"id": "decimals", "value": 1}]}
-			]},
-			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 11, "valueSize": 17}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
-			"targets": [
-				{"refId": "A", "expr": "100 * (1 - sum(node_memory_MemAvailable_bytes{job=\"node\"}) / sum(node_memory_MemTotal_bytes{job=\"node\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM used", "instant": true},
-				{"refId": "B", "expr": "sum(node_memory_MemTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "RAM total", "instant": true},
-				{"refId": "C", "expr": "100 * sum(node_memory_SwapTotal_bytes{job=\"node\"} - node_memory_SwapFree_bytes{job=\"node\"}) / clamp_min(sum(node_memory_SwapTotal_bytes{job=\"node\"}), 1) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap used", "instant": true},
-				{"refId": "D", "expr": "sum(node_memory_SwapTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap total", "instant": true}
-			]
-		},
-		{
-			"id": 23, "type": "stat", "title": "Root filesystem", "gridPos": {"x": 12, "y": 11, "w": 6, "h": 5},
-			"datasource": {"type": "prometheus", "uid": "Prometheus"},
-			"description": "Used space is based on bytes available to unprivileged processes on the root filesystem, matching the Filesystems section below.",
-			"fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [
-				{"matcher": {"id": "byName", "options": "Root total"}, "properties": [{"id": "unit", "value": "bytes"}, {"id": "decimals", "value": 1}]}
-			]},
-			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 11, "valueSize": 17}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
-			"targets": [
-				{"refId": "A", "expr": "100 * (1 - min(node_filesystem_avail_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) / min(node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"})) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Root used", "instant": true},
-				{"refId": "B", "expr": "min(node_filesystem_size_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs|overlay|squashfs|nsfs\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Root total", "instant": true}
-			]
-		},
-		{
-			"id": 24, "type": "bargauge", "title": "Pressure", "gridPos": {"x": 18, "y": 11, "w": 6, "h": 5},
+			"id": 24, "type": "bargauge", "title": "Pressure", "gridPos": {"x": 18, "y": 11, "w": 6, "h": 4},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Recent time that work was stalled waiting for CPU, memory, I/O or interrupt handling. IRQ pressure can be unavailable on older host kernels.",
 			"fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "min": 0, "max": 1, "noValue": "Unknown", "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.05}, {"color": "red", "value": 0.2}]}, "color": {"mode": "thresholds"}}, "overrides": []},
@@ -129,7 +110,7 @@
 			]
 		},
 		{
-			"id": 4, "type": "timeseries", "title": "CPU contention", "gridPos": {"x": 0, "y": 16, "w": 12, "h": 6},
+			"id": 4, "type": "timeseries", "title": "CPU contention", "gridPos": {"x": 0, "y": 15, "w": 12, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Busy is executing user/system/interrupt work, excluding steal and I/O wait. Pressure is time at least one task waits for CPU; it is not additive with busy. Steal is hypervisor scheduling delay, where exposed. Zero steal does not prove dedicated capacity.",
 			"links": [{"title": "Host diagnostics", "url": "/d/rYdddlPWk", "keepTime": true}],
@@ -143,14 +124,14 @@
 			]
 		},
 		{
-			"id": 10, "type": "timeseries", "title": "Memory", "gridPos": {"x": 12, "y": 16, "w": 12, "h": 6},
+			"id": 10, "type": "timeseries", "title": "Memory", "gridPos": {"x": 12, "y": 15, "w": 12, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Available RAM includes reclaimable memory; swap used is not necessarily active paging. Pressure and paging activity are in Host diagnostics.",
 			"fieldConfig": {"defaults": {"unit": "bytes", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
 			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
 			"targets": [
 				{"refId": "A", "expr": "sum(node_memory_MemAvailable_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Available", "range": true},
-				{"refId": "B", "expr": "sum(node_memory_MemTotal_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Total", "range": true},
+				{"refId": "B", "expr": "sum(node_memory_MemTotal_bytes{job=\"node\"} - node_memory_MemAvailable_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Used", "range": true},
 				{"refId": "C", "expr": "sum(node_memory_SwapTotal_bytes{job=\"node\"} - node_memory_SwapFree_bytes{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Swap used", "range": true}
 			]
 		},
@@ -175,7 +156,7 @@
 			"title": "Alerts / 24h",
 			"gridPos": {
 				"x": 0,
-				"y": 30,
+				"y": 71,
 				"w": 24,
 				"h": 6
 			},
@@ -221,7 +202,7 @@
 		}
 		,
 		{
-			"id": 11, "type": "marcusolsson-dynamictext-panel", "title": "Filesystems", "gridPos": {"x": 0, "y": 36, "w": 24, "h": 6},
+			"id": 11, "type": "marcusolsson-dynamictext-panel", "title": "Filesystems", "gridPos": {"x": 0, "y": 29, "w": 24, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Writable persistent filesystems only. Free space is available to unprivileged processes. Inodes measure remaining file entries, not bytes.",
 			"fieldConfig": {"defaults": {}, "overrides": []},
@@ -243,7 +224,7 @@
 			]
 		},
 		{
-			"id": 12, "type": "timeseries", "title": "Disk latency", "gridPos": {"x": 0, "y": 42, "w": 12, "h": 7},
+			"id": 12, "type": "timeseries", "title": "Disk latency", "gridPos": {"x": 0, "y": 35, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Five-minute average block-device latency, including queueing. Averages hide tail stalls. No operations means no latency sample. Compare with disk demand at the same time; virtual disk utilization is not a reliable capacity percentage.",
 			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
@@ -254,7 +235,7 @@
 			]
 		},
 		{
-			"id": 13, "type": "timeseries", "title": "Disk demand", "gridPos": {"x": 12, "y": 42, "w": 12, "h": 7},
+			"id": 13, "type": "timeseries", "title": "Disk demand", "gridPos": {"x": 12, "y": 35, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"fieldConfig": {"defaults": {"unit": "iops", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 5, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
 			"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
@@ -264,7 +245,7 @@
 			]
 		},
 		{
-			"id": 14, "type": "timeseries", "title": "Network traffic", "gridPos": {"x": 0, "y": 49, "w": 12, "h": 7},
+			"id": 14, "type": "timeseries", "title": "Network traffic", "gridPos": {"x": 0, "y": 42, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Host uplinks collected by the host timer, excluding loopback, Docker bridges and veth pairs. Five-minute rates of host-namespace counters. Traffic is demand, not maximum bandwidth.",
 			"fieldConfig": {"defaults": {"unit": "Bps", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 8, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
@@ -275,7 +256,7 @@
 			]
 		},
 		{
-			"id": 15, "type": "timeseries", "title": "Network latency", "gridPos": {"x": 12, "y": 49, "w": 12, "h": 7},
+			"id": 15, "type": "timeseries", "title": "Network latency", "gridPos": {"x": 0, "y": 49, "w": 12, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Mean RTT and its standard deviation (jitter) from five ICMP packets per run. Loss is separate; all packets lost never becomes zero latency. ICMP destinations can deprioritize replies.",
 			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
@@ -286,7 +267,7 @@
 			]
 		},
 		{
-			"id": 16, "type": "timeseries", "title": "Network loss", "gridPos": {"x": 0, "y": 56, "w": 12, "h": 6},
+			"id": 16, "type": "timeseries", "title": "Network loss", "gridPos": {"x": 12, "y": 42, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "ICMP loss averaged over 15 minutes and outgoing TCP retransmissions divided by outgoing segments. These measure different protocols and must not be added together.",
 			"fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
@@ -297,7 +278,7 @@
 			]
 		},
 		{
-			"id": 17, "type": "timeseries", "title": "HTTP and DNS", "gridPos": {"x": 12, "y": 56, "w": 12, "h": 6},
+			"id": 17, "type": "timeseries", "title": "HTTP and DNS", "gridPos": {"x": 12, "y": 49, "w": 12, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Probes originate on this VPS. HTTP includes redirects and TLS; DNS uses the host resolver, including any cache. A separate externally hosted monitor is required to observe this VPS during an outage.",
 			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never"}}, "overrides": []},
@@ -308,7 +289,7 @@
 			]
 		},
 		{
-			"id": 18, "type": "marcusolsson-dynamictext-panel", "title": "Performance probes", "gridPos": {"x": 0, "y": 62, "w": 24, "h": 6},
+			"id": 18, "type": "marcusolsson-dynamictext-panel", "title": "Performance probes", "gridPos": {"x": 0, "y": 55, "w": 24, "h": 6},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "CPU: hourly 15-second single-thread sysbench. Read: 30 seconds every 3 hours, 100 IOPS. Sync: 30 seconds daily, 20 writes/s with fdatasync. One benchmark per run, skipped when busy. Baseline locks after at least seven days and seven samples, separately for each version/profile. These are not provider capacity guarantees.",
 			"fieldConfig": {"defaults": {}, "overrides": []},
@@ -330,7 +311,7 @@
 			]
 		},
 		{
-			"id": 19, "type": "timeseries", "title": "CPU performance", "gridPos": {"x": 0, "y": 68, "w": 12, "h": 7},
+			"id": 19, "type": "timeseries", "title": "CPU performance", "gridPos": {"x": 0, "y": 61, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Latest successful single-thread score and fixed reference. Not a core count or GHz estimate. Values disappear when older than twice the probe interval; the probe card shows exact age. Version changes restart calibration.",
 			"fieldConfig": {"defaults": {"unit": "ops", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never", "lineInterpolation": "stepAfter"}}, "overrides": [{"matcher": {"id": "byName", "options": "Baseline"}, "properties": [{"id": "custom.lineStyle", "value": {"fill": "dash"}}]}]},
@@ -341,7 +322,7 @@
 			]
 		},
 		{
-			"id": 20, "type": "timeseries", "title": "Disk probe latency", "gridPos": {"x": 12, "y": 68, "w": 12, "h": 7},
+			"id": 20, "type": "timeseries", "title": "Disk probe latency", "gridPos": {"x": 12, "y": 61, "w": 12, "h": 7},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Read p50/p95/p99 and write synchronization p95 at fixed small loads, not maximum IOPS. p95 means 95% of sampled operations completed within that time. Short-run p99 is noisy. Direct reads bypass the Linux page cache, not necessarily host caches. Synchronization latency is reported separately from write latency.",
 			"fieldConfig": {"defaults": {"unit": "s", "min": 0, "color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 0, "spanNulls": false, "showPoints": "never", "lineInterpolation": "stepAfter"}}, "overrides": []},
@@ -354,7 +335,7 @@
 			]
 		},
 		{
-			"id": 21, "type": "stat", "title": "Maintenance", "gridPos": {"x": 0, "y": 75, "w": 12, "h": 3},
+			"id": 21, "type": "stat", "title": "Maintenance", "gridPos": {"x": 0, "y": 68, "w": 12, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Pending security packages are reported where Ubuntu apt-check is available. The package index must be fresh; counts exclude container images. Certificate is the earliest configured file expiry, not a remote TLS check.",
 			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Certificate"}, "properties": [{"id": "unit", "value": "dtdurations"}]}, {"matcher": {"id": "byName", "options": "Reboot"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "No", "color": "green"}, "1": {"text": "Required", "color": "orange"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}]}]}]},
@@ -366,7 +347,7 @@
 			]
 		},
 		{
-			"id": 22, "type": "stat", "title": "Check coverage", "gridPos": {"x": 12, "y": 75, "w": 12, "h": 3},
+			"id": 22, "type": "stat", "title": "Check coverage", "gridPos": {"x": 12, "y": 68, "w": 12, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"description": "Security-check support, failed system services, and independently observed HTTP status. Unknown means unsupported or missing evidence. External checks and outage notifications require another machine.",
 			"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 0, "mappings": [{"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}], "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Patch check"}, "properties": [{"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Unavailable", "color": "orange"}, "1": {"text": "Ready", "color": "green"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Unknown", "color": "gray"}}}]}]}, {"matcher": {"id": "byName", "options": "External"}, "properties": [{"id": "noValue", "value": "Not set up"}, {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "Failing", "color": "red"}, "1": {"text": "Reachable", "color": "green"}}}, {"type": "special", "options": {"match": "nan", "result": {"text": "Not set up", "color": "orange"}}}]}]}]},
@@ -378,10 +359,10 @@
 			]
 		},
 		{
-			"id": 30, "type": "row", "title": "Host diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 78, "w": 24, "h": 1},
+			"id": 30, "type": "row", "title": "Host diagnostics", "collapsed": true, "gridPos": {"x": 0, "y": 77, "w": 24, "h": 1},
 			"panels": [
 				{
-					"id": 31, "type": "timeseries", "title": "Disk throughput", "gridPos": {"x": 0, "y": 79, "w": 12, "h": 7},
+					"id": 31, "type": "timeseries", "title": "Disk throughput", "gridPos": {"x": 0, "y": 78, "w": 12, "h": 7},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"fieldConfig": {"defaults": {"unit": "Bps", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
 					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
@@ -391,7 +372,7 @@
 					]
 				},
 				{
-					"id": 32, "type": "timeseries", "title": "Disk queue", "gridPos": {"x": 12, "y": 79, "w": 12, "h": 7},
+					"id": 32, "type": "timeseries", "title": "Disk queue", "gridPos": {"x": 12, "y": 78, "w": 12, "h": 7},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"description": "Average outstanding I/O requests, derived from weighted I/O time. Correlate with latency and demand; a virtual device does not expose all physical queues.",
 					"fieldConfig": {"defaults": {"unit": "short", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
@@ -399,7 +380,7 @@
 					"targets": [{"refId": "A", "expr": "rate(node_disk_io_time_weighted_seconds_total{job=\"node\",device!~\"loop.*|ram.*|dm-.*\"}[5m]) and on(instance) (up{job=\"node\"} == 1)", "legendFormat": "{{device}}", "range": true}]
 				},
 				{
-					"id": 33, "type": "timeseries", "title": "Memory and I/O stalls", "gridPos": {"x": 0, "y": 86, "w": 12, "h": 7},
+					"id": 33, "type": "timeseries", "title": "Memory and I/O stalls", "gridPos": {"x": 0, "y": 85, "w": 12, "h": 7},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
 					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
@@ -409,7 +390,7 @@
 					]
 				},
 				{
-					"id": 34, "type": "timeseries", "title": "Swap activity", "gridPos": {"x": 12, "y": 86, "w": 12, "h": 7},
+					"id": 34, "type": "timeseries", "title": "Swap activity", "gridPos": {"x": 12, "y": 85, "w": 12, "h": 7},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"fieldConfig": {"defaults": {"unit": "ops", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
 					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
@@ -419,7 +400,7 @@
 					]
 				},
 				{
-					"id": 35, "type": "timeseries", "title": "Interface errors", "gridPos": {"x": 0, "y": 93, "w": 12, "h": 7},
+					"id": 35, "type": "timeseries", "title": "Interface errors", "gridPos": {"x": 0, "y": 92, "w": 12, "h": 7},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"fieldConfig": {"defaults": {"unit": "pps", "min": 0, "custom": {"lineWidth": 2, "spanNulls": false}}, "overrides": []},
 					"options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi"}},
@@ -429,7 +410,7 @@
 					]
 				},
 				{
-					"id": 36, "type": "stat", "title": "Download sample", "gridPos": {"x": 12, "y": 93, "w": 12, "h": 3},
+					"id": 36, "type": "stat", "title": "Download sample", "gridPos": {"x": 12, "y": 92, "w": 12, "h": 3},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"description": "A 10 MiB Cloudflare download at most weekly, skipped when busy. This is path throughput for that transfer, not guaranteed port speed; it does not measure upload capacity. Disable or change its URL in the host config to comply with provider policy.",
 					"fieldConfig": {"defaults": {"noValue": "Unknown", "decimals": 1, "unit": "Bps"}, "overrides": [{"matcher": {"id": "byName", "options": "Age"}, "properties": [{"id": "unit", "value": "dtdurations"}]}]},
@@ -440,7 +421,7 @@
 					]
 				},
 				{
-					"id": 37, "type": "marcusolsson-dynamictext-panel", "title": "Probe details", "gridPos": {"x": 0, "y": 100, "w": 24, "h": 11},
+					"id": 37, "type": "marcusolsson-dynamictext-panel", "title": "Probe details", "gridPos": {"x": 0, "y": 99, "w": 24, "h": 11},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"description": "Latest fresh successful samples. Host activity during the test includes the benchmark itself. CPU/reference is an events-per-second ratio; disk/reference compares p95 latency. Profiles are version-specific. A missing baseline is still calibrating, not zero performance.",
 					"fieldConfig": {"defaults": {}, "overrides": []},
@@ -464,7 +445,7 @@
 					]
 				},
 				{
-					"id": 38, "type": "marcusolsson-dynamictext-panel", "title": "Infrastructure health", "gridPos": {"x": 0, "y": 111, "w": 24, "h": 12},
+					"id": 38, "type": "marcusolsson-dynamictext-panel", "title": "Infrastructure health", "gridPos": {"x": 0, "y": 110, "w": 24, "h": 12},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
 					"description": "Non-production-project containers with restart policies. Production container health belongs on the corresponding project dashboard. Missing healthcheck is unknown readiness.",
 					"fieldConfig": {"defaults": {}, "overrides": []},

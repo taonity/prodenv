@@ -204,24 +204,39 @@ const productionShares = mobileDashboards.find(mobile => mobile.uid === 'mobile-
 const alertPanel = panels.find(panel => panel.id === 14);
 const serverDashboard = mobileDashboards.find(mobile => mobile.uid === 'mobile-server');
 const serverAlertPanel = flatten(serverDashboard.panels).find(panel => panel.id === 7);
-const quickResourcePanels = [5, 8, 23, 24].map(id => serverDashboard.panels.find(panel => panel.id === id));
-assert.deepEqual(quickResourcePanels.map(panel => panel.title), ['CPU quick view', 'Memory quick view', 'Root filesystem', 'Pressure']);
-assert(quickResourcePanels.every(panel => panel.gridPos.y === 11 && panel.gridPos.h === 5));
-assert.deepEqual(quickResourcePanels.map(panel => panel.type), ['stat', 'stat', 'stat', 'bargauge']);
+const quickResourcePanels = [5, 24].map(id => serverDashboard.panels.find(panel => panel.id === id));
+assert.deepEqual(quickResourcePanels.map(panel => panel.title), ['Host resources', 'Pressure']);
+assert(quickResourcePanels.every(panel => panel.gridPos.y === 11 && panel.gridPos.h === 4));
+assert.deepEqual(quickResourcePanels.map(panel => panel.type), ['marcusolsson-dynamictext-panel', 'bargauge']);
+assert(quickResourcePanels[0].options.styles.includes('@media (max-width:600px)'));
+assert(quickResourcePanels[0].options.content.includes('class=\"quick-resources\"'));
 assert.deepEqual(quickResourcePanels.flatMap(panel => panel.targets.map(target => target.legendFormat)), [
-  'CPU busy', 'System load', 'CPU cores', 'Uptime',
+  'CPU busy', 'System load', 'CPU cores',
   'RAM used', 'RAM total', 'Swap used', 'Swap total',
   'Root used', 'Root total', 'CPU', 'Memory', 'I/O', 'IRQ',
 ]);
 const quickResourceQueries = quickResourcePanels.flatMap(panel => panel.targets.map(target => target.expr)).join('\n');
-for (const metric of ['node_load1', 'node_boot_time_seconds', 'node_memory_MemAvailable_bytes', 'node_memory_SwapTotal_bytes', 'node_filesystem_avail_bytes',
+for (const metric of ['node_load1', 'node_memory_MemAvailable_bytes', 'node_memory_SwapTotal_bytes', 'node_filesystem_avail_bytes',
   'node_pressure_cpu_waiting_seconds_total', 'node_pressure_memory_waiting_seconds_total', 'node_pressure_io_waiting_seconds_total', 'node_pressure_irq_stalled_seconds_total']) {
   assert(quickResourceQueries.includes(metric), `Quick resource view is missing ${metric}`);
 }
+const uptimePanels = flatten(serverDashboard.panels).filter(panel => (panel.targets || []).some(target => target.expr.includes('node_boot_time_seconds')));
+assert.deepEqual(uptimePanels.map(panel => panel.id), [1], 'Uptime belongs only in the Host summary');
+assert.deepEqual(serverDashboard.panels.find(panel => panel.id === 10).targets.map(target => target.legendFormat), ['Available', 'Used', 'Swap used']);
+assert(serverDashboard.panels.find(panel => panel.id === 10).targets[1].expr.includes('MemTotal_bytes{job="node"} - node_memory_MemAvailable_bytes'));
+assert.deepEqual([14, 16, 15, 17].map(id => { const panel = serverDashboard.panels.find(candidate => candidate.id === id); return [panel.id, panel.gridPos.x, panel.gridPos.y]; }), [
+  [14, 0, 42], [16, 12, 42], [15, 0, 49], [17, 12, 49],
+]);
+assert(serverAlertPanel.gridPos.y < quickResourcePanels[0].gridPos.y);
+assert(quickResourcePanels[0].gridPos.y < serverDashboard.panels.find(panel => panel.id === 4).gridPos.y);
+assert(serverDashboard.panels.find(panel => panel.id === 4).gridPos.y < productionShares.gridPos.y);
+assert(productionShares.gridPos.y < serverDashboard.panels.find(panel => panel.id === 11).gridPos.y);
+assert(serverDashboard.panels.find(panel => panel.id === 22).gridPos.y < serverDashboard.panels.find(panel => panel.id === 9).gridPos.y);
+assert(serverDashboard.panels.find(panel => panel.id === 9).gridPos.y < serverDashboard.panels.find(panel => panel.id === 30).gridPos.y);
 for (const panel of flatten(serverDashboard.panels).filter(panel => panel.type === 'stat' && panel.targets.some(target => target.expr.includes('vector(0/0)')))) {
   assert(panel.fieldConfig.defaults.mappings.some(mapping => mapping.type === 'special' && mapping.options.match === 'nan'), 'Missing stat fields must not render NaN');
 }
-for (const panel of flatten(serverDashboard.panels).filter(panel => [11,18,37,38].includes(panel.id))) {
+for (const panel of flatten(serverDashboard.panels).filter(panel => [5,11,18,37,38].includes(panel.id))) {
   assert(panel.options.afterRender.includes('getBoundingClientRect'));
   assert(panel.options.afterRender.includes('ResizeObserver'));
   new Function('context', panel.options.afterRender);
