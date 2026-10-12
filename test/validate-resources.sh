@@ -97,7 +97,7 @@ try {
     const template = path.join(checkout, 'templates/docker');
     assert(fs.existsSync(path.join(template, 'docker-compose.yml')), `${project}: missing templates/docker/docker-compose.yml in ${checkout}`);
     const required = {};
-    for (const source of run('git', ['-C', checkout, 'ls-files', '-z', 'templates/docker']).split('\0').filter(source => /\.ya?ml$/.test(source))) {
+    for (const source of run('git', ['-C', checkout, 'ls-files', '--cached', '--others', '--exclude-standard', '-z', 'templates/docker']).split('\0').filter(source => /\.ya?ml$/.test(source))) {
       const text = fs.readFileSync(path.join(checkout, source), 'utf8');
       for (const match of text.matchAll(/\$\{([A-Z_][A-Z_0-9]*):?\?/g)) required[match[1]] = 'resource-check';
       const destination = path.join(fixture, 'applications', project, path.relative(template, path.join(checkout, source)));
