@@ -2,11 +2,11 @@
 
 set -eu
 
-operation="${1:?Usage: record-backup-metric.sh snapshot|integrity|restore [RESTORE_DIRECTORY]}"
+operation="${1:?Usage: record-backup-metric.sh snapshot|integrity|secret-recovery|restore [RESTORE_DIRECTORY]}"
 metrics_directory="${METRICS_DIRECTORY:-/metrics}"
 
 case "$operation" in
-  snapshot|integrity) ;;
+  snapshot|integrity|secret-recovery) ;;
   restore)
     restore_directory="${2:?RESTORE_DIRECTORY is required}"
     case "$restore_directory" in

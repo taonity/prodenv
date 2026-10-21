@@ -6,6 +6,7 @@ rule_files:
   - /etc/prometheus/bot-alerts.yml
   - /etc/prometheus/host-health-alerts.yml
   - /etc/prometheus/web-security-alerts.yml
+  - /etc/prometheus/credential-alerts.yml
 
 scrape_configs:
   - job_name: loki
