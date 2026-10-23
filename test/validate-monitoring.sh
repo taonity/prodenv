@@ -65,6 +65,20 @@ for (const environment of ['prod', 'stage']) {
 }
 const dashboard = JSON.parse(fs.readFileSync('logging/grafana/provisioning/dashboards/mobile-overview.json', 'utf8'));
 const flatten = panels => panels.flatMap(panel => [panel, ...flatten(panel.panels || [])]);
+const interpolate = (expression, range = '24h', interval = '30m') => expression
+  .replace(/\$__range\b/g, range).replace(/\$__interval\b/g, interval);
+for (const filename of fs.readdirSync('logging/grafana/provisioning/dashboards').filter(name => name.endsWith('.json'))) {
+  const view = JSON.parse(fs.readFileSync(`logging/grafana/provisioning/dashboards/${filename}`, 'utf8'));
+  assert.deepEqual(view.time, {from: 'now-24h', to: 'now'}, `${filename}: default to 24 hours`);
+  for (const panel of flatten(view.panels || [])) {
+    assert(!panel.timeFrom && !panel.timeShift, `${filename}: ${panel.title} must follow the dashboard range`);
+    for (const target of panel.targets || []) {
+      if (panel.datasource?.type !== 'prometheus' || !target.expr?.includes('increase(')) continue;
+      assert(target.expr.includes(target.instant ? '[$__range]' : '[$__interval]'), `${filename}: ${panel.title} must use a dynamic counting window`);
+      if (!target.instant) assert.equal(panel.interval, '1m', 'Count charts need enough scrape samples at short ranges');
+    }
+  }
+}
 const panels = flatten(dashboard.panels);
 assert.equal(dashboard.uid, 'mobile-overview');
 assert.equal(dashboard.schemaVersion, 39);
@@ -107,7 +121,10 @@ for (const mobile of mobileDashboards) {
         assert(!/node_filesystem_|node_memory_MemAvailable|prodenv_backup_/.test(target.expr), 'Server-wide metrics belong on Server');
         if (target.expr.includes('node_cpu_seconds_total')) assert(target.expr.includes('container_cpu_usage_seconds_total'), 'Only project CPU usage belongs on project views');
       }
-      rules.push({record: `${mobile.uid.replace(/-/g, '_')}_${panel.id}_${target.refId}`, expr: target.expr.replace(/\$\{project:regex\}/g, 'sinair-llm-bot-prod').replace(/\$\{container:regex\}/g, '.*')});
+      const expression = target.expr.replace(/\$\{project:regex\}/g, 'sinair-llm-bot-prod').replace(/\$\{container:regex\}/g, '.*');
+      for (const range of expression.includes('$__range') ? ['5m', '24h', '7d'] : ['24h']) {
+        rules.push({record: `${mobile.uid.replace(/-/g, '_')}_${panel.id}_${target.refId}_${range}`, expr: interpolate(expression, range)});
+      }
     }
   }
 }
@@ -115,19 +132,20 @@ const messages = panels.find(panel => panel.id === 4);
 const projectDashboard = mobileDashboards.find(mobile => mobile.uid === 'mobile-project');
 assert.equal(projectDashboard.templating.list[0].current.value, 'fullstack-starter-prod');
 assert.equal(messages.type, 'stat');
-assert.equal(messages.title, 'Chat messages / last 24h');
+assert.equal(messages.title, 'Chat messages');
 assert.deepEqual(messages.targets.map(target => target.legendFormat), ['Human messages', 'Bot replies']);
-assert(messages.targets.every(target => target.instant && target.expr.includes('[24h]')));
+assert(messages.targets.every(target => target.instant && target.expr.includes('[$__range]')));
 const messageActivity = panels.find(panel => panel.id === 20);
 assert.equal(messageActivity.type, 'timeseries');
 assert.equal(messageActivity.title, 'Chat activity');
 assert.equal(messageActivity.gridPos.y, 17);
 assert.equal(messageActivity.gridPos.w, 24);
-assert.equal(messageActivity.timeFrom, '24h');
-assert.equal(messageActivity.hideTimeOverride, false);
+assert.equal(messageActivity.timeFrom, undefined);
+assert.equal(messageActivity.hideTimeOverride, undefined);
+assert.equal(messageActivity.interval, '1m');
 assert.equal(messageActivity.maxDataPoints, 48);
 assert.deepEqual(messageActivity.targets.map(target => target.legendFormat), ['Human messages', 'Bot replies']);
-assert(messageActivity.targets.every(target => target.range && !target.instant && target.interval === '30m' && target.expr.includes('[30m]')));
+assert(messageActivity.targets.every(target => target.range && !target.instant && target.interval === '1m' && target.expr.includes('[$__interval]')));
 assert(messageActivity.targets[0].expr.includes('bot_chat_human_messages_total'));
 assert(messageActivity.targets[1].expr.includes('bot_replies_acknowledged_total'));
 assert.equal(messageActivity.fieldConfig.defaults.custom.drawStyle, 'bars');
@@ -138,8 +156,10 @@ assert.equal(panels.filter(panel => panel.type === 'timeseries' && panel.targets
 const humanMessages = messages.targets[0].expr;
 const botReplies = messages.targets[1].expr;
 const failures = panels.find(panel => panel.id === 10);
+assert(failures.targets.every(target => target.expr.includes('[$__range]')));
 assert.deepEqual(failures.targets.map(target => target.legendFormat), ['Reply handling', 'Chat summaries']);
 const replyTime = panels.find(panel => panel.id === 11);
+assert(replyTime.targets.every(target => target.expr.includes('[$__range]')));
 assert.equal(replyTime.targets[1].legendFormat, 'Replies measured');
 assert(!panels.some(panel => /BYOK/.test(panel.title)));
 const spending = panels.find(panel => panel.id === 3).targets[0].expr;
@@ -251,6 +271,8 @@ assert(!serverDashboard.panels.find(panel => panel.id === 1).targets.some(target
 assert(!flatten(serverDashboard.panels).some(panel => (panel.targets || []).some(target => /container_cpu_cfs_/.test(target.expr))), 'Container throttling belongs on projects');
 for (const mobile of [dashboard, projectDashboard]) {
   const health = flatten(mobile.panels).find(panel => panel.id === 40);
+  assert(health.targets.find(target => target.refId === 'C').expr.includes('[$__range]'));
+  assert(health.options.content.includes('Starts / range'));
   assert(health.targets.every(target => target.expr.includes('project=') || target.expr.includes('project=~')));
   assert(health.options.styles.includes('overflow-wrap:anywhere'));
   assert(flatten(mobile.panels).some(panel => (panel.targets || []).some(target => target.expr.includes('container_cpu_cfs_throttled_periods_total'))));
@@ -269,11 +291,11 @@ assert.equal(serverAlertPanel.gridPos.y, 3);
 assert(!JSON.stringify(alertPanel.options).includes('viewPanel'));
 for (const history of [alertHistory]) {
   assert.equal(history.type, 'state-timeline');
-  assert.equal(history.title, 'Alerts / 24h');
+  assert.equal(history.title, 'Alert history');
   assert.equal(history.gridPos.y, history === alertHistory ? 32 : 25);
   assert.equal(history.gridPos.w, 24);
-  assert.equal(history.timeFrom, '24h');
-  assert.equal(history.hideTimeOverride, true);
+  assert.equal(history.timeFrom, undefined);
+  assert.equal(history.hideTimeOverride, undefined);
   assert.equal(history.targets.length, 1);
   assert.equal(history.targets[0].range, true);
   assert.equal(history.targets[0].instant, undefined);
@@ -292,7 +314,10 @@ assert(alertHistory.targets[0].expr.includes('alertname=~"Bot.*"'));
 assert(!serverAlertHistory.targets[0].expr.includes('alertname=~"Bot.*"'));
 assert.equal(serverAlertHistory.type, 'marcusolsson-dynamictext-panel');
 assert.equal(serverAlertHistory.options.renderMode, 'data');
-assert.equal(serverAlertHistory.timeFrom, '24h');
+assert.equal(serverAlertHistory.title, 'Alert history');
+assert.equal(serverAlertHistory.timeFrom, undefined);
+assert(serverDashboard.panels.find(panel => panel.id === 1).targets[1].expr.includes('[$__range]'));
+assert(flatten(serverDashboard.panels).find(panel => panel.id === 38).targets[2].expr.includes('[$__range]'));
 assert.equal(serverAlertHistory.targets[0].expr, serverAlertPanel.targets[0].expr);
 assert.equal(serverAlertHistory.targets[0].range, true);
 assert(!JSON.stringify(serverAlertHistory.options).includes('perPage'));
@@ -456,6 +481,40 @@ assert.equal(projectHelpers.memory(512 * 1024 * 1024), '512 MiB');
 fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-rules.json'), JSON.stringify({groups: [{name: 'dashboard', rules}]}));
 fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-tests.json'), JSON.stringify({
   rule_files: [], evaluation_interval: '1m', tests: [
+    ...[['5m', 5], ['1h', 60], ['24h', 1440]].map(([range, minutes]) => ({
+      name: `Selected ${range} range controls event totals`, interval: '1m', input_series: [
+        ...['bot_chat_human_messages_total', 'bot_replies_acknowledged_total', 'bot_reply_ack_latency_seconds_count'].map(metric => ({
+          series: `${metric}{job="sinair-llm-bot-prod"}`, values: '0+10x1440',
+        })),
+        ...['failed', 'summary_failed'].map(outcome => ({
+          series: `bot_pipeline_runs_total{job="sinair-llm-bot-prod",outcome="${outcome}"}`, values: '0+10x1440',
+        })),
+        {series: 'node_vmstat_oom_kill{job="node"}', values: '0+10x1440'},
+        {series: 'up{job="node"}', values: '1+0x1440'},
+        {series: 'prodenv:health_fresh{job="node"}', values: '1+0x1440'},
+        ...['sinair-llm-bot-prod', 'logging'].map(project => ({
+          series: `prodenv_health_container_restarts_total{job="node",project="${project}",name="${project}-backend-1"}`, values: '0+10x1440',
+        })),
+      ], promql_expr_test: [
+        ...[humanMessages, botReplies, replyTime.targets[1].expr, ...failures.targets.map(target => target.expr), serverDashboard.panels.find(panel => panel.id === 1).targets[1].expr].map(expression => ({
+          expr: interpolate(expression, range), eval_time: '24h', exp_samples: [{labels: '{}', value: minutes * 10}],
+        })),
+        ...[dashboard, projectDashboard, serverDashboard].map(view => {
+          const health = flatten(view.panels).find(panel => panel.id === (view.uid === 'mobile-server' ? 38 : 40));
+          const project = view.uid === 'mobile-server' ? 'logging' : 'sinair-llm-bot-prod';
+          return {expr: interpolate(health.targets[2].expr.replace(/\$\{project:regex\}/g, project), range),
+            eval_time: '24h', exp_samples: [{labels: `{name="${project}-backend-1"}`, value: minutes * 10}]};
+        }),
+      ],
+    })),
+    ...[['1m', 1], ['5m', 5], ['30m', 30]].map(([interval, minutes]) => ({
+      name: `Chat chart counts use ${interval} buckets`, interval: '15s', input_series: [
+        {series: 'bot_chat_human_messages_total{job="sinair-llm-bot-prod"}', values: '0+1x120'},
+        {series: 'bot_replies_acknowledged_total{job="sinair-llm-bot-prod"}', values: '0+1x120'},
+      ], promql_expr_test: messageActivity.targets.map(target => ({
+        expr: interpolate(target.expr, '24h', interval), eval_time: '30m', exp_samples: [{labels: '{}', value: minutes * 4}],
+      })),
+    })),
     {interval: '1m', input_series: [
       {series: 'up{job="cadvisor"}', values: '1+0x30'},
       {series: 'up{job="node"}', values: '1+0x30'},
@@ -542,7 +601,7 @@ fs.writeFileSync(path.join(process.env.MONITORING_TEST_DIRECTORY, 'dashboard-tes
       {expr: spending, eval_time: '30m', exp_samples: []},
     ]},
   ],
-}));
+}, (key, value) => key === 'expr' ? interpolate(value) : value));
 console.log(`Dashboards: ${mobileDashboards.length} consistent views, ${rules.length} production-only queries`);
 if (process.env.MONITORING_PREVIEW_URL) {
   const http = require('http');

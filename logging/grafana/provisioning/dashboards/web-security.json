@@ -1,7 +1,7 @@
 {
   "id": null, "uid": "web-security", "title": "Web Security", "schemaVersion": 39, "version": 1,
   "tags": ["security", "infrastructure"], "timezone": "browser", "editable": true, "refresh": "",
-  "time": {"from": "now-15m", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+  "time": {"from": "now-24h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
   "annotations": {"list": []},
   "links": [
     {"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
@@ -135,12 +135,12 @@
       "targets": [{"refId": "A", "expr": "sum by (site) (rate(nginx_security_response_bytes_total{site=~`${site:regex}`,site!=\"internal-health\"}[5m]))", "legendFormat": "{{site}}", "range": true}]
     },
     {
-      "id": 15, "type": "timeseries", "title": "Scenario detections", "gridPos": {"x": 12, "y": 37, "w": 12, "h": 6},
+      "id": 15, "type": "timeseries", "title": "Scenario detections", "interval": "1m", "maxDataPoints": 100, "gridPos": {"x": 12, "y": 37, "w": 12, "h": 6},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "description": "Server-wide detections per five-minute window. These are detections, not bans; no source/site filter applies.",
+      "description": "Server-wide detections per chart interval over the selected dashboard time range. Intervals scale with the range, with a one-minute minimum. These are detections, not bans; no source/site filter applies.",
       "fieldConfig": {"defaults": {"min": 0, "decimals": 0, "color": {"mode": "palette-classic"}}, "overrides": []},
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-      "targets": [{"refId": "A", "expr": "sum by (name) (increase(cs_bucket_overflowed_total{job=\"crowdsec\"}[5m]))", "legendFormat": "{{name}}", "range": true}]
+      "targets": [{"refId": "A", "expr": "sum by (name) (increase(cs_bucket_overflowed_total{job=\"crowdsec\"}[$__interval]))", "legendFormat": "{{name}}", "range": true, "interval": "1m"}]
     },
     {
       "id": 16, "type": "stat", "title": "Firewall evidence", "gridPos": {"x": 0, "y": 43, "w": 8, "h": 3},

@@ -1,7 +1,7 @@
 {
   "id": null, "uid": "web-requests", "title": "CrowdSec Detection Details", "schemaVersion": 39, "version": 1,
   "tags": ["security", "infrastructure"], "timezone": "browser", "editable": true, "refresh": "",
-  "time": {"from": "now-15m", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m"]},
+  "time": {"from": "now-24h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m"]},
   "annotations": {"list": []},
   "links": [{"type": "link", "title": "Web Security", "url": "/d/web-security", "keepTime": true}],
   "templating": {"list": [

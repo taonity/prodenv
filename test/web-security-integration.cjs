@@ -96,7 +96,11 @@ try {
   const dashboard = JSON.parse(fs.readFileSync('logging/grafana/provisioning/dashboards/web-security.json'));
   const details = JSON.parse(fs.readFileSync('logging/grafana/provisioning/dashboards/web-requests.json'));
   const panels = flatten(dashboard.panels);
-  assert.equal(dashboard.time.from, 'now-15m');
+  assert.equal(dashboard.time.from, 'now-24h');
+  assert.equal(details.time.from, 'now-24h');
+  const scenarioDetections = panels.find(panel => panel.id === 15);
+  assert.equal(scenarioDetections.interval, '1m');
+  assert(scenarioDetections.targets.every(target => target.expr.includes('[$__interval]') && target.interval === '1m'));
   assert.equal(dashboard.refresh, '');
   assert(!dashboard.panels.some(panel => panel.type === 'logs'));
   assert(dashboard.panels.find(panel => panel.id === 23).collapsed);

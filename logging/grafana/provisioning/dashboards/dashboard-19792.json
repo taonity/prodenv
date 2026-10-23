@@ -9392,7 +9392,7 @@
                                 ]
                    },
     "time":  {
-                 "from":  "now-5m",
+                 "from":  "now-24h",
                  "to":  "now"
              },
     "timepicker":  {

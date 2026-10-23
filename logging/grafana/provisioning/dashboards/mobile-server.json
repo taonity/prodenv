@@ -1,7 +1,7 @@
 {
 	"id": null, "uid": "mobile-server", "title": "Server", "schemaVersion": 39, "version": 1,
 	"tags": ["mobile", "production"], "timezone": "browser", "editable": true, "refresh": "1m",
-	"time": {"from": "now-6h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
+	"time": {"from": "now-24h", "to": "now"}, "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
 	"templating": {"list": []}, "annotations": {"list": []},
 	"links": [
 		{"type": "link", "title": "Server", "url": "/d/mobile-server", "keepTime": true},
@@ -12,13 +12,13 @@
 	],
 	"panels": [
 		{
-			"id": 1, "type": "stat", "title": "Host", "gridPos": {"x": 0, "y": 0, "w": 8, "h": 3},
+			"id": 1, "type": "stat", "title": "Host", "description": "Uptime is the age of the current boot. OOM counts cover the selected dashboard time range.", "gridPos": {"x": 0, "y": 0, "w": 8, "h": 3},
 			"datasource": {"type": "prometheus", "uid": "Prometheus"},
 			"fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": [{"matcher": {"id": "byName", "options": "Uptime"}, "properties": [{"id": "unit", "value": "dtdurations"}]}]},
 			"options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 12, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
 			"targets": [
 				{"refId": "A", "expr": "time() - max(node_boot_time_seconds{job=\"node\"}) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "Uptime", "instant": true},
-				{"refId": "B", "expr": "sum(increase(node_vmstat_oom_kill{job=\"node\"}[24h])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "OOM / 24h", "instant": true}
+				{"refId": "B", "expr": "sum(increase(node_vmstat_oom_kill{job=\"node\"}[$__range])) and on() (min(up{job=\"node\"}) == 1)", "legendFormat": "OOM / range", "instant": true}
 			]
 		},
 		{
@@ -153,7 +153,7 @@
 		{
 			"id": 9,
 			"type": "marcusolsson-dynamictext-panel",
-			"title": "Alerts / 24h",
+			"title": "Alert history",
 			"gridPos": {
 				"x": 0,
 				"y": 71,
@@ -164,9 +164,7 @@
 				"type": "prometheus",
 				"uid": "Prometheus"
 			},
-			"description": "Sampled firing intervals for host and infrastructure alerts during the last 24 hours. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
-			"timeFrom": "24h",
-			"hideTimeOverride": true,
+			"description": "Sampled firing intervals for host and infrastructure alerts during the selected dashboard time range. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
 			"fieldConfig": {
 				"defaults": {},
 				"overrides": []
@@ -447,12 +445,12 @@
 				{
 					"id": 38, "type": "marcusolsson-dynamictext-panel", "title": "Infrastructure health", "gridPos": {"x": 0, "y": 110, "w": 24, "h": 12},
 					"datasource": {"type": "prometheus", "uid": "Prometheus"},
-					"description": "Non-production-project containers with restart policies. Production container health belongs on the corresponding project dashboard. Missing healthcheck is unknown readiness.",
+					"description": "Non-production-project containers with restart policies. Observed starts cover the selected dashboard time range. Production container health belongs on the corresponding project dashboard. Missing healthcheck is unknown readiness.",
 					"fieldConfig": {"defaults": {}, "overrides": []},
 					"options": {
 						"renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
 						"defaultContent": "<div class=\"health-empty\">Host health collector not reporting</div>",
-						"content": "<div class=\"infra-grid\">{{#each data}}<article><h3>{{name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts 24h</dt><dd>{{count starts}}</dd></dl></article>{{/each}}</div>",
+						"content": "<div class=\"infra-grid\">{{#each data}}<article><h3>{{name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts / range</dt><dd>{{count starts}}</dd></dl></article>{{/each}}</div>",
 						"afterRender": "const root = context.element;\nconst panel = root.closest('.react-grid-item');\nconst content = root.querySelector('.health-grid,.probe-grid,.probe-details,.infra-grid');\nif (!panel || !content) return;\nconst saved = new Map();\nlet frame = 0;\nconst restore = () => { saved.forEach((properties, element) => properties.forEach(([value, priority], property) => { if (value) element.style.setProperty(property,value,priority); else element.style.removeProperty(property); })); saved.clear(); };\nconst set = (element, property, value) => { if (!saved.has(element)) saved.set(element,new Map()); if (!saved.get(element).has(property)) saved.get(element).set(property,[element.style.getPropertyValue(property),element.style.getPropertyPriority(property)]); if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property,value,'important'); };\nconst resize = () => { frame = 0; if (getComputedStyle(panel).position === 'absolute') { restore(); return; } for (let element = root; element && element !== panel; element = element.parentElement) { set(element,'height','auto'); set(element,'max-height','none'); set(element,'overflow','visible'); } const height = Math.ceil(content.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12); set(panel,'min-height',height+'px'); set(panel,'max-height',height+'px'); };\nconst schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\nconst observer = new ResizeObserver(schedule); observer.observe(content); window.addEventListener('resize',schedule); schedule();\nreturn () => { observer.disconnect(); window.removeEventListener('resize',schedule); if (frame) cancelAnimationFrame(frame); restore(); };", "helpers": "context.handlebars.registerHelper('runningText', value => value === 1 ? 'Running' : value === 0 ? 'Stopped' : 'Unknown'); context.handlebars.registerHelper('healthText', value => value === 1 ? 'Healthy' : value === 0 ? 'Not healthy' : 'No check'); context.handlebars.registerHelper('count', value => typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 'Unknown');",
 						"styles": ".infra-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; } .infra-grid article { min-width:0; padding:6px; border:1px solid #7775; border-radius:4px; } .infra-grid h3 { margin:0 0 6px; font-size:13px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .infra-grid dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px; margin:0; } .infra-grid dt,.infra-grid dd { margin:0; font-size:12px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .infra-grid dd { text-align:right; } .health-empty { padding:12px; }"
 					},
@@ -460,7 +458,7 @@
 					"targets": [
 						{"refId": "A", "expr": "max by(name) (prodenv_health_container_running{job=\"node\",project!~\".*-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
 						{"refId": "B", "expr": "max by(name) (prodenv_health_container_healthy{job=\"node\",project!~\".*-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
-						{"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project!~\".*-prod\"}[24h]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
+						{"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project!~\".*-prod\"}[$__range]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
 					]
 				}
 			]

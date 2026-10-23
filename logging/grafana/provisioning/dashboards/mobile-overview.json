@@ -2,14 +2,14 @@
   "id": null,
   "uid": "mobile-overview",
   "title": "sinair-llm-bot-prod",
-  "description": "Production bot message counts, spending and project resource usage. Message totals cover the last 24 hours. Server-wide information is on Server.",
+  "description": "Production bot message counts, spending and project resource usage. Message totals cover the selected dashboard time range. Server-wide information is on Server.",
   "tags": ["mobile", "production", "sinair"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
   "refresh": "1m",
-  "time": {"from": "now-6h", "to": "now"},
+  "time": {"from": "now-24h", "to": "now"},
   "timepicker": {"refresh_intervals": ["1m", "5m", "15m"]},
   "templating": {"list": [{
     "name": "container", "type": "query", "hide": 2,
@@ -51,14 +51,14 @@
       ]
     },
     {
-      "id": 4, "type": "stat", "title": "Chat messages / last 24h", "gridPos": {"x": 12, "y": 0, "w": 6, "h": 3},
+      "id": 4, "type": "stat", "title": "Chat messages", "gridPos": {"x": 12, "y": 0, "w": 6, "h": 3},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "description": "Counts over the last 24 hours of observed traffic, not pending work. Human messages exclude history replays, duplicates, this bot's echoes and sleeping-room messages. Bot replies are collector-acknowledged. Prometheus estimates counter increases between scrapes; missing data is unknown, not zero.",
+      "description": "Counts over the selected dashboard time range of observed traffic, not pending work. Human messages exclude history replays, duplicates, this bot's echoes and sleeping-room messages. Bot replies are collector-acknowledged. Prometheus estimates counter increases between scrapes; missing data is unknown, not zero.",
       "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "blue"}}, "overrides": []},
       "options": {"colorMode": "value", "graphMode": "none", "orientation": "vertical", "textMode": "value_and_name", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
       "targets": [
-        {"refId": "A", "expr": "sum(increase(bot_chat_human_messages_total{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Human messages", "instant": true},
-        {"refId": "B", "expr": "sum(increase(bot_replies_acknowledged_total{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Bot replies", "instant": true}
+        {"refId": "A", "expr": "sum(increase(bot_chat_human_messages_total{job=\"sinair-llm-bot-prod\"}[$__range]))", "legendFormat": "Human messages", "instant": true},
+        {"refId": "B", "expr": "sum(increase(bot_replies_acknowledged_total{job=\"sinair-llm-bot-prod\"}[$__range]))", "legendFormat": "Bot replies", "instant": true}
       ]
     },
     {
@@ -91,15 +91,15 @@
     {
       "id": 20, "type": "timeseries", "title": "Chat activity", "gridPos": {"x": 0, "y": 17, "w": 24, "h": 7},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "description": "Estimated counts in non-overlapping 30-minute windows. Human messages are shown as bars; acknowledged bot replies are shown as a line. The rightmost window and Last values show recent activity. Counts are derived from scraped counters and do not identify individual messages or prove delivery to the chat server.",
-      "timeFrom": "24h", "hideTimeOverride": false, "maxDataPoints": 48,
+      "description": "Estimated counts per chart interval over the selected dashboard time range. Intervals scale with the range, with a one-minute minimum. Human messages are shown as bars; acknowledged bot replies are shown as a line. The rightmost window and Last values show recent activity. Counts are derived from scraped counters and do not identify individual messages or prove delivery to the chat server.",
+      "interval": "1m", "maxDataPoints": 48,
       "fieldConfig": {"defaults": {"decimals": 0, "min": 0, "color": {"mode": "fixed", "fixedColor": "blue"}, "custom": {"drawStyle": "bars", "barAlignment": 0, "lineWidth": 1, "fillOpacity": 65, "spanNulls": false, "showPoints": "never", "stacking": {"mode": "none", "group": "A"}}}, "overrides": [
         {"matcher": {"id": "byName", "options": "Bot replies"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}, {"id": "custom.drawStyle", "value": "line"}, {"id": "custom.lineWidth", "value": 2}, {"id": "custom.fillOpacity", "value": 0}]}
       ]},
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["lastNotNull"]}, "tooltip": {"mode": "multi", "sort": "desc"}},
       "targets": [
-        {"refId": "A", "expr": "sum(increase(bot_chat_human_messages_total{job=\"sinair-llm-bot-prod\"}[30m]))", "legendFormat": "Human messages", "range": true, "interval": "30m"},
-        {"refId": "B", "expr": "sum(increase(bot_replies_acknowledged_total{job=\"sinair-llm-bot-prod\"}[30m]))", "legendFormat": "Bot replies", "range": true, "interval": "30m"}
+        {"refId": "A", "expr": "sum(increase(bot_chat_human_messages_total{job=\"sinair-llm-bot-prod\"}[$__interval]))", "legendFormat": "Human messages", "range": true, "interval": "1m"},
+        {"refId": "B", "expr": "sum(increase(bot_replies_acknowledged_total{job=\"sinair-llm-bot-prod\"}[$__interval]))", "legendFormat": "Bot replies", "range": true, "interval": "1m"}
       ]
     },
     {
@@ -141,10 +141,9 @@
       "targets": [{"refId": "A", "expr": "(ALERTS{alertstate=\"firing\",alertname=~\"Bot.*\"} or ALERTS{alertstate=\"firing\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} or ALERTS{alertstate=\"firing\",project=\"sinair-llm-bot-prod\"})", "instant": true, "format": "table"}]
     },
     {
-      "id": 19, "type": "state-timeline", "title": "Alerts / 24h", "gridPos": {"x": 0, "y": 32, "w": 24, "h": 6},
+      "id": 19, "type": "state-timeline", "title": "Alert history", "gridPos": {"x": 0, "y": 32, "w": 24, "h": 6},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "description": "Sampled firing intervals for Sinair project alerts during the last 24 hours. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
-      "timeFrom": "24h", "hideTimeOverride": true,
+      "description": "Sampled firing intervals for Sinair project alerts during the selected dashboard time range. Red means firing; a gap means resolved or no sample. Hover a segment for its approximate start, end and duration. This history lasts only as long as Prometheus retains the underlying series.",
       "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "Firing", "color": "red"}}}], "color": {"mode": "fixed", "fixedColor": "red"}, "custom": {"axisPlacement": "left", "axisWidth": 200, "fillOpacity": 80, "lineWidth": 0, "spanNulls": false}}, "overrides": []},
       "options": {"mergeValues": true, "showValue": "never", "alignValue": "left", "rowHeight": 0.8, "perPage": 10, "legend": {"displayMode": "list", "placement": "bottom", "showLegend": false, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
       "targets": [{"refId": "A", "expr": "label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace(label_replace((ALERTS{alertstate=\"firing\",alertname=~\"Bot.*\"} or ALERTS{alertstate=\"firing\",container_label_com_docker_compose_project=\"sinair-llm-bot-prod\"} or ALERTS{alertstate=\"firing\",project=\"sinair-llm-bot-prod\"}), \"affected\", \"$1\", \"job\", \"(.+)\"), \"affected\", \"$1\", \"instance\", \"(.+)\"), \"affected\", \"$1\", \"name\", \"(.+)\"), \"affected\", \"$1\", \"service\", \"(.+)\"), \"affected\", \"$1\", \"container_label_com_docker_compose_service\", \"(.+)\"), \"display\", \"$1\", \"alertname\", \"(.+)\"), \"display\", \"Metrics down\", \"alertname\", \"BotMetricsUnavailable\"), \"display\", \"State stale\", \"alertname\", \"BotStateStale\"), \"display\", \"Collector down\", \"alertname\", \"BotCollectorUnavailable\"), \"display\", \"Rooms missing\", \"alertname\", \"BotRoomsDisconnected\"), \"display\", \"Sending off\", \"alertname\", \"BotSenderDisabled\"), \"display\", \"Work stuck\", \"alertname\", \"BotWorkStuck\"), \"display\", \"Pipeline failing\", \"alertname\", \"BotPipelineFailing\"), \"display\", \"Spending stale\", \"alertname\", \"BotSpendingStale\")", "legendFormat": "{{display}} / {{affected}}", "range": true}]
@@ -175,25 +174,25 @@
           ]
         },
         {
-          "id": 10, "type": "stat", "title": "Failed bot operations / 24h", "gridPos": {"x": 0, "y": 51, "w": 12, "h": 4},
+          "id": 10, "type": "stat", "title": "Failed bot operations", "gridPos": {"x": 0, "y": 51, "w": 12, "h": 4},
           "datasource": {"type": "prometheus", "uid": "Prometheus"},
-          "description": "Reply handling: an error while deciding whether to answer, generating a reply or queuing it. Chat summaries: the LLM produced no conversation summary. These count failed attempts, including retries; intentional silence is not a failure. They do not measure answer quality or confirmed message delivery.",
+          "description": "Failed attempts over the selected dashboard time range. Reply handling: an error while deciding whether to answer, generating a reply or queuing it. Chat summaries: the LLM produced no conversation summary. These count failed attempts, including retries; intentional silence is not a failure. They do not measure answer quality or confirmed message delivery.",
           "fieldConfig": {"defaults": {"decimals": 0, "noValue": "Unknown", "color": {"mode": "fixed", "fixedColor": "orange"}}, "overrides": []},
           "options": {"colorMode": "value", "graphMode": "none", "textMode": "value_and_name", "orientation": "vertical", "wideLayout": false, "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
           "targets": [
-            {"refId": "A", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"failed\"}[24h]))", "legendFormat": "Reply handling", "instant": true},
-            {"refId": "B", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"summary_failed\"}[24h]))", "legendFormat": "Chat summaries", "instant": true}
+            {"refId": "A", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"failed\"}[$__range]))", "legendFormat": "Reply handling", "instant": true},
+            {"refId": "B", "expr": "sum(increase(bot_pipeline_runs_total{job=\"sinair-llm-bot-prod\",outcome=\"summary_failed\"}[$__range]))", "legendFormat": "Chat summaries", "instant": true}
           ]
         },
         {
-          "id": 11, "type": "stat", "title": "Reply time / p95 last 24h", "gridPos": {"x": 12, "y": 51, "w": 12, "h": 4},
+          "id": 11, "type": "stat", "title": "Reply time / p95", "gridPos": {"x": 12, "y": 51, "w": 12, "h": 4},
           "datasource": {"type": "prometheus", "uid": "Prometheus"},
-          "description": "Time from receiving the trigger message to collector acknowledgment, including deliberate waiting. p95 estimates a duration within which 95% of measured replies were acknowledged; it is not the average or an exact chat-server delivery time. Interpret it with the sample count.",
+          "description": "Measured replies over the selected dashboard time range. Time from receiving the trigger message to collector acknowledgment, including deliberate waiting. p95 estimates a duration within which 95% of measured replies were acknowledged; it is not the average or an exact chat-server delivery time. Interpret it with the sample count.",
           "fieldConfig": {"defaults": {"unit": "s", "noValue": "No samples", "color": {"mode": "fixed", "fixedColor": "gray"}}, "overrides": [{"matcher": {"id": "byName", "options": "Replies measured"}, "properties": [{"id": "unit", "value": "short"}, {"id": "decimals", "value": 0}]}]},
           "options": {"graphMode": "none", "textMode": "value_and_name", "wideLayout": false, "orientation": "vertical", "text": {"titleSize": 13, "valueSize": 20}, "reduceOptions": {"calcs": ["last"], "fields": "", "values": false}},
           "targets": [
-            {"refId": "A", "expr": "histogram_quantile(0.95, sum by(le) (increase(bot_reply_ack_latency_seconds_bucket{job=\"sinair-llm-bot-prod\"}[24h])))", "legendFormat": "p95", "instant": true},
-            {"refId": "B", "expr": "sum(increase(bot_reply_ack_latency_seconds_count{job=\"sinair-llm-bot-prod\"}[24h]))", "legendFormat": "Replies measured", "instant": true}
+            {"refId": "A", "expr": "histogram_quantile(0.95, sum by(le) (increase(bot_reply_ack_latency_seconds_bucket{job=\"sinair-llm-bot-prod\"}[$__range])))", "legendFormat": "p95", "instant": true},
+            {"refId": "B", "expr": "sum(increase(bot_reply_ack_latency_seconds_count{job=\"sinair-llm-bot-prod\"}[$__range]))", "legendFormat": "Replies measured", "instant": true}
           ]
         },
         {
@@ -210,12 +209,12 @@
         {
           "id": 40, "type": "marcusolsson-dynamictext-panel", "title": "Container health", "gridPos": {"x": 0, "y": 58, "w": 24, "h": 8},
           "datasource": {"type": "prometheus", "uid": "Prometheus"},
-          "description": "Observed starts include automatic restarts and detected recreations; short-lived manual restarts between polls may be missed. No check means no Docker healthcheck, not proven readiness. OOM is Docker's current OOMKilled state; kernel OOM events are on Server. Only containers with a restart policy are included.",
+          "description": "Observed starts cover the selected dashboard time range and include automatic restarts and detected recreations; short-lived manual restarts between polls may be missed. No check means no Docker healthcheck, not proven readiness. OOM is Docker's current OOMKilled state; kernel OOM events are on Server. Only containers with a restart policy are included.",
           "fieldConfig": {"defaults": {}, "overrides": []},
           "options": {
             "renderMode": "allRows", "wrap": false, "editors": ["helpers", "styles"],
             "defaultContent": "<div class=\"health-empty\">Host health collector not reporting</div>",
-            "content": "<div class=\"health-grid\">{{#each data}}<article><h3>{{shortName name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts 24h</dt><dd>{{count starts}}</dd><dt>OOM killed</dt><dd>{{oomText oom}}</dd></dl></article>{{/each}}</div>",
+            "content": "<div class=\"health-grid\">{{#each data}}<article><h3>{{shortName name}}</h3><dl><dt>Process</dt><dd>{{runningText running}}</dd><dt>Health</dt><dd>{{healthText healthy}}</dd><dt>Starts / range</dt><dd>{{count starts}}</dd><dt>OOM killed</dt><dd>{{oomText oom}}</dd></dl></article>{{/each}}</div>",
             "afterRender": "return (function fitPanel(context) {\r\n  const root = context.element;\r\n  const panel = root.closest('.react-grid-item');\r\n  const content = root.querySelector('.alert-list,.alert-history,.health-grid,.health-empty');\r\n  if (!panel || !content) return;\r\n  const grid = panel.parentElement;\r\n  const key = Symbol.for('prodenv.contentLayout');\r\n  if (!grid[key]) {\r\n    const entries = new Map();\r\n    const saved = new Map();\r\n    const offsets = new Map();\r\n    let frame = 0;\r\n    const set = (element, property, value) => {\r\n      if (!saved.has(element)) saved.set(element, new Map());\r\n      const properties = saved.get(element);\r\n      if (!properties.has(property)) properties.set(property, [element.style.getPropertyValue(property), element.style.getPropertyPriority(property)]);\r\n      if (element.style.getPropertyValue(property) !== value || element.style.getPropertyPriority(property) !== 'important') element.style.setProperty(property, value, 'important');\r\n    };\r\n    const restore = () => {\r\n      for (const [element, properties] of saved) for (const [property, [value, priority]] of properties) {\r\n        if (value) element.style.setProperty(property, value, priority);\r\n        else element.style.removeProperty(property);\r\n      }\r\n      saved.clear();\r\n      offsets.clear();\r\n    };\r\n    const resize = () => {\r\n      frame = 0;\r\n      const siblings = Array.from(grid.children).filter(element => element.classList.contains('react-grid-item'));\r\n      const geometry = new Map(siblings.map(element => [element, {\r\n        top: element.getBoundingClientRect().top - (offsets.get(element) || 0),\r\n        height: parseFloat(element.style.height) || 0,\r\n        absolute: getComputedStyle(element).position === 'absolute',\r\n      }]));\r\n      const changes = [];\r\n      for (const [element, entry] of entries) {\r\n        if (!element.isConnected || !geometry.has(element)) continue;\r\n        for (let ancestor = entry.root; ancestor && ancestor !== element; ancestor = ancestor.parentElement) {\r\n          set(ancestor, 'height', 'auto');\r\n          set(ancestor, 'max-height', 'none');\r\n          set(ancestor, 'overflow', 'visible');\r\n        }\r\n        const height = Math.ceil(entry.content.getBoundingClientRect().bottom - element.getBoundingClientRect().top + 12);\r\n        set(element, 'min-height', height + 'px');\r\n        set(element, 'max-height', height + 'px');\r\n        const original = geometry.get(element);\r\n        if (original.absolute) changes.push({element, bottom: original.top + original.height, delta: height - original.height});\r\n      }\r\n      for (const [element, original] of geometry) {\r\n        const offset = original.absolute ? changes.reduce((total, change) => total + (change.element !== element && original.top >= change.bottom - 1 ? change.delta : 0), 0) : 0;\r\n        offsets.set(element, offset);\r\n        set(element, 'translate', offset ? '0px ' + offset + 'px' : '0px');\r\n      }\r\n      const height = (parseFloat(grid.style.height) || 0) + changes.reduce((total, change) => total + change.delta, 0);\r\n      set(grid, 'min-height', Math.max(0, height) + 'px');\r\n      set(grid, 'max-height', 'none');\r\n    };\r\n    const schedule = () => { if (!frame) frame = requestAnimationFrame(resize); };\r\n    const observer = new ResizeObserver(schedule);\r\n    const mutations = new MutationObserver(schedule);\r\n    mutations.observe(grid, {childList: true, subtree: true, attributes: true, attributeFilter: ['style']});\r\n    grid[key] = {entries, observer, schedule, remove(element) {\r\n      observer.unobserve(entries.get(element).content);\r\n      entries.delete(element);\r\n      restore();\r\n      if (entries.size) schedule();\r\n      else {\r\n        observer.disconnect();\r\n        mutations.disconnect();\r\n        if (frame) cancelAnimationFrame(frame);\r\n        delete grid[key];\r\n      }\r\n    }};\r\n  }\r\n  const layout = grid[key];\r\n  layout.entries.set(panel, {root, content});\r\n  layout.observer.observe(content);\r\n  const button = root.querySelector('.alert-toggle');\r\n  const update = () => {\r\n    root.querySelectorAll('.alert-details').forEach(details => { details.hidden = !this.expanded; });\r\n    if (button) {\r\n      button.textContent = this.expanded ? 'Collapse details' : 'Expand details';\r\n      button.setAttribute('aria-expanded', String(Boolean(this.expanded)));\r\n    }\r\n    layout.schedule();\r\n  };\r\n  const toggle = () => { this.expanded = !this.expanded; update(); };\r\n  if (button) button.addEventListener('click', toggle);\r\n  update();\r\n  return () => {\r\n    if (button) button.removeEventListener('click', toggle);\r\n    layout.remove(panel);\r\n  };\r\n}).call(this, context);", "helpers": "context.handlebars.registerHelper('shortName', value => String(value || 'Unknown').replace(/^.+-prod[-_]/, '')); context.handlebars.registerHelper('runningText', value => value === 1 ? 'Running' : value === 0 ? 'Stopped' : 'Unknown'); context.handlebars.registerHelper('healthText', value => value === 1 ? 'Healthy' : value === 0 ? 'Not healthy' : 'No check'); context.handlebars.registerHelper('oomText', value => value === 1 ? 'Yes' : value === 0 ? 'No' : 'Unknown'); context.handlebars.registerHelper('count', value => typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 'Unknown');",
             "styles": ".health-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:8px; } .health-grid article { min-width:0; padding:6px; border:1px solid #7775; border-radius:4px; } .health-grid h3 { margin:0 0 6px; font-size:13px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .health-grid dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px; margin:0; } .health-grid dt,.health-grid dd { margin:0; font-size:12px; line-height:18px; overflow-wrap:anywhere; white-space:normal; } .health-grid dd { text-align:right; } .health-empty { padding:12px; }"
           },
@@ -223,7 +222,7 @@
           "targets": [
             {"refId": "A", "expr": "max by(name) (prodenv_health_container_running{job=\"node\",project=\"sinair-llm-bot-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
             {"refId": "B", "expr": "max by(name) (prodenv_health_container_healthy{job=\"node\",project=\"sinair-llm-bot-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
-            {"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project=\"sinair-llm-bot-prod\"}[24h]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
+            {"refId": "C", "expr": "max by(name) (increase(prodenv_health_container_restarts_total{job=\"node\",project=\"sinair-llm-bot-prod\"}[$__range]) and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"},
             {"refId": "D", "expr": "max by(name) (prodenv_health_container_oom_killed{job=\"node\",project=\"sinair-llm-bot-prod\"} and on(instance) prodenv:health_fresh)", "instant": true, "format": "table"}
           ]
         }
