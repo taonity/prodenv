@@ -10,7 +10,7 @@ contactPoints:
           url: http://ntfy/alert?template=grafana
           httpMethod: POST
           authorization_scheme: Bearer
-          authorization_credentials: $SINAIR_BOT_NTFY_TOKEN
+          authorization_credentials: $NTFY_TOKEN
           maxAlerts: '0'
           title: 'sinair-llm-bot-prod: {{ .Status }}'
           message: |-
