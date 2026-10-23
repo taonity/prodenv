@@ -3,6 +3,68 @@ rule_files:
   - ../logging/prometheus/host-health-alerts.yml
 evaluation_interval: 1m
 tests:
+  - name: bot participation requires four bot messages and a full fresh room window
+    interval: 1m
+    input_series:
+      - series: up{job="sinair-llm-bot-prod",instance="backend"}
+        values: '1 1 1 1 1 1 0 1'
+      - series: bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod",instance="backend",platform="sinair"}
+        values: '0 60 120 180 180 180 360 420'
+      - series: bot_chat_window_messages{job="sinair-llm-bot-prod",instance="backend",platform="sinair",room="#chat",window="100"}
+        values: '100 100 99 100 100 100 100 100'
+      - series: bot_chat_window_bot_messages{job="sinair-llm-bot-prod",instance="backend",platform="sinair",room="#chat",window="100"}
+        values: '3 4 4 5 5 5 5 3'
+      - series: bot_chat_window_messages{job="sinair-llm-bot-prod",instance="backend",platform="sinair",room="#quiet",window="100"}
+        values: '100+0x7'
+      - series: bot_chat_window_bot_messages{job="sinair-llm-bot-prod",instance="backend",platform="sinair",room="#quiet",window="100"}
+        values: '3+0x7'
+      - series: bot_chat_window_messages{job="sinair-llm-bot-stage",instance="stage",platform="sinair",room="#chat",window="100"}
+        values: '100+0x7'
+      - series: bot_chat_window_bot_messages{job="sinair-llm-bot-stage",instance="stage",platform="sinair",room="#chat",window="100"}
+        values: '10+0x7'
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: BotChatParticipationHigh
+        exp_alerts: []
+      - eval_time: 1m
+        alertname: BotChatParticipationHigh
+        exp_alerts:
+          - exp_labels:
+              job: sinair-llm-bot-prod
+              instance: backend
+              platform: sinair
+              room: '#chat'
+              window: '100'
+              severity: warning
+              project: sinair-llm-bot-prod
+            exp_annotations:
+              summary: 'sinair-llm-bot-prod sent 4 of the last 100 messages in #chat'
+              description: '4 or more bot messages in the latest 100 total chat messages. Check recent replies in the bot console.'
+      - eval_time: 2m
+        alertname: BotChatParticipationHigh
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BotChatParticipationHigh
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: BotChatParticipationHigh
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: BotChatParticipationHigh
+        exp_alerts: []
+    promql_expr_test:
+      - expr: max by (room) (ALERTS{alertname="BotChatParticipationHigh",alertstate="firing",job="sinair-llm-bot-prod"} * on(job, instance, platform, room, window) bot_chat_window_bot_messages{job="sinair-llm-bot-prod",window="100"}) or vector(0)
+        eval_time: 1m
+        exp_samples:
+          - labels: '{room="#chat"}'
+            value: 4
+          - labels: '{}'
+            value: 0
+      - expr: max by (room) (ALERTS{alertname="BotChatParticipationHigh",alertstate="firing",job="sinair-llm-bot-prod"} * on(job, instance, platform, room, window) bot_chat_window_bot_messages{job="sinair-llm-bot-prod",window="100"}) or vector(0)
+        eval_time: 7m
+        exp_samples:
+          - labels: '{}'
+            value: 0
   - name: old textfile health must not be treated as live
     interval: 1m
     input_series:

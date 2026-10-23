@@ -1,6 +1,19 @@
 groups:
   - name: sinair-bot
     rules:
+      - alert: BotChatParticipationHigh
+        expr: |
+          (bot_chat_window_bot_messages{job="sinair-llm-bot-prod",window="100"} >= 4)
+          and (bot_chat_window_messages{job="sinair-llm-bot-prod",window="100"} == 100)
+          and on(job, instance) (time() - bot_metrics_snapshot_timestamp_seconds{job="sinair-llm-bot-prod"} < 120)
+          and on(job, instance) (up{job="sinair-llm-bot-prod"} == 1)
+        labels:
+          severity: warning
+          project: sinair-llm-bot-prod
+        annotations:
+          summary: 'sinair-llm-bot-prod sent {{ $value }} of the last 100 messages in {{ $labels.room }}'
+          description: '4 or more bot messages in the latest 100 total chat messages. Check recent replies in the bot console.'
+
       - alert: BotMetricsUnavailable
         expr: up{job="sinair-llm-bot-prod"} == 0 or absent(up{job="sinair-llm-bot-prod"})
         for: 3m

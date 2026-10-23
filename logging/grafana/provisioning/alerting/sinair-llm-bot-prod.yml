@@ -1,0 +1,77 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: sinair-llm-bot-prod-ntfy
+    receivers:
+      - uid: sinair-llm-bot-prod-ntfy
+        type: webhook
+        disableResolveMessage: true
+        settings:
+          url: http://ntfy/alert?template=grafana
+          httpMethod: POST
+          authorization_scheme: Bearer
+          authorization_credentials: $SINAIR_BOT_NTFY_TOKEN
+          maxAlerts: '0'
+          title: 'sinair-llm-bot-prod: {{ .Status }}'
+          message: |-
+            {{ range .Alerts }}{{ .Annotations.summary }}
+            {{ .Annotations.description }}
+            {{ end }}
+            https://grafana.taonity.org/d/mobile-overview
+groups:
+  - orgId: 1
+    name: sinair-llm-bot-prod
+    folder: sinair-llm-bot-prod
+    interval: 15s
+    rules:
+      - uid: sinair-llm-bot-prod-chat-participation
+        title: sinair-llm-bot-prod chat participation
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'sinair-llm-bot-prod sent {{ $values.A.Value }} of the last 100 messages in {{ $labels.room }}'
+          description: '4 or more bot messages in the latest 100 total chat messages. Check recent replies in the bot console.'
+          __dashboardUid__: mobile-overview
+          __panelId__: '4'
+        labels:
+          project: sinair-llm-bot-prod
+          severity: warning
+        notification_settings:
+          receiver: sinair-llm-bot-prod-ntfy
+          group_by: [grafana_folder, alertname, room]
+          group_wait: 0s
+          group_interval: 1m
+          repeat_interval: 4h
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              refId: A
+              expr: max by (room) (ALERTS{alertname="BotChatParticipationHigh",alertstate="firing",job="sinair-llm-bot-prod"} * on(job, instance, platform, room, window) bot_chat_window_bot_messages{job="sinair-llm-bot-prod",window="100"}) or vector(0)
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [3]
+                  operator:
+                    type: and
+                  reducer:
+                    type: last
+                  type: query
