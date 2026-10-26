@@ -645,4 +645,6 @@ docker run --rm --entrypoint promtool -v "$temporary:/checks:ro" \
 docker run --rm --entrypoint promtool -v "$temporary:/checks:ro" \
   prom/prometheus:v2.47.1 test rules /checks/dashboard-tests.json
 
+node test/grafana-alerting-integration.cjs
+
 echo 'Backup metric publication and monitoring rules passed.'

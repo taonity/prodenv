@@ -22,7 +22,7 @@ groups:
   - orgId: 1
     name: sinair-llm-bot-prod
     folder: sinair-llm-bot-prod
-    interval: 15s
+    interval: 30s
     rules:
       - uid: sinair-llm-bot-prod-chat-participation
         title: sinair-llm-bot-prod chat participation
