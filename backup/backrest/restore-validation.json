@@ -11,6 +11,15 @@
       "minimumFreeBytes": 10737418240,
       "restoreTimeoutSeconds": 14400,
       "importTimeoutSeconds": 14400
+    },
+    {
+      "project": "gentool-data-viewer-prod",
+      "path": "/userdata/gentool-data-viewer-prod/postgres",
+      "maxDumpBytes": 8589934592,
+      "freeSpaceMultiplier": 6,
+      "minimumFreeBytes": 10737418240,
+      "restoreTimeoutSeconds": 14400,
+      "importTimeoutSeconds": 14400
     }
   ]
 }
