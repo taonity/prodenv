@@ -119,6 +119,9 @@ try {
   const grouped = helpers.detectionRows([{Line: JSON.stringify(example)}, {Line: JSON.stringify(example)}]);
   assert.equal(grouped.length, 1, 'Repeated exports must not duplicate the activity list');
   assert.equal(grouped[0].scenario, 'crowdsecurity/http-probing');
+  assert.equal(grouped[0].scenarioLabel, 'probing');
+  assert.equal(helpers.detectionRows([{Line: JSON.stringify({...example, scenario: 'crowdsecurity/CVE-2017-9841'})}])[0].scenarioLabel, '2017 9841');
+  assert.equal(helpers.detectionRows([{Line: JSON.stringify({...example, scenario: 'crowdsecurity/http-path-traversal-probing'})}])[0].scenarioLabel, 'path traversal probing');
   assert.equal(helpers.detectionRows([{Line: JSON.stringify({...example, sites: ['_']})}])[0].siteLabel, 'Catch-all');
   const destination = new URL(grouped[0].href, 'http://localhost');
   assert.equal(destination.pathname, '/d/web-requests');
@@ -139,7 +142,8 @@ try {
     const panel = panels.find(panel => panel.id === id);
     assert.equal(panel.fieldConfig.defaults.displayName, '${__field.name}');
     assert.equal(panel.transformations[0].id, 'rowsToFields');
-    assert.equal(panel.options.namePlacement, 'left');
+    assert.equal(panel.options.namePlacement, 'auto');
+    assert.equal(panel.options.valueMode, 'text');
   }
   for (const panel of panels.filter(panel => panel.type === 'logs')) {
     assert.equal(panel.options.showTime, false, 'Fixed timestamp columns squeeze log messages on phones');
