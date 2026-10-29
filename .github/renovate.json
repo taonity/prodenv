@@ -3,7 +3,8 @@
     "extends": [
       "config:base"
     ],
-    "schedule": ["before 4am"],
+    "schedule": ["* * 1 */3 *"],
+    "updateNotScheduled": false,
     "packageRules": [
       {
         "matchPackagePatterns": [
