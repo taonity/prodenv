@@ -1,0 +1,51 @@
+rule_files:
+  - ../logging/prometheus/backup-retention-alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",instance="host"}'
+        values: '1+0x30'
+      - series: 'prodenv_backup_retention_success{job="node",instance="host"}'
+        values: '0+0x30'
+      - series: 'prodenv_backup_retention_last_success_timestamp_seconds{job="node",instance="host"}'
+        values: '0+0x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BackupRecordExpiryFailed
+        exp_alerts:
+          - exp_labels: {job: node, instance: host, severity: critical}
+            exp_annotations:
+              summary: "Record-age backup expiration is failing or overdue"
+              description: "Inspect backrest-retained-expiry immediately. This worker forgets expired snapshots and prunes their data independently of new exports."
+  - interval: 1m
+    input_series:
+      - series: 'prodenv_backup_dataset_export_timestamp_seconds{job="node",instance="host",project="sinair-llm-bot-prod",dataset="chat"}'
+        values: '-100000+0x30'
+      - series: 'prodenv_backup_dataset_export_timestamp_seconds{job="node",instance="host",project="sinair-llm-bot-prod",dataset="core"}'
+        values: '0+0x30'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ProjectBackupExportOverdue
+        exp_alerts:
+          - exp_labels: {job: node, instance: host, project: sinair-llm-bot-prod, dataset: chat, severity: warning}
+            exp_annotations:
+              summary: "sinair-llm-bot-prod chat export is stale or missing"
+              description: "Inspect postgres-export. New unclassified tables deliberately block database export."
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",instance="host"}'
+        values: '1+0x1680'
+      - series: 'prodenv_backup_retained_worker_last_run_timestamp_seconds{job="node",instance="host"}'
+        values: '0+0x1680'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: RetainedBackupWorkerStale
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: RetainedBackupWorkerStale
+        exp_alerts:
+          - exp_labels: {job: node, instance: host, severity: warning}
+            exp_annotations:
+              summary: "Age-bounded backup worker has stopped reporting"
+              description: "Check the daily backrest-retained-backup job; retained database records may not have been uploaded in the last 26 hours."

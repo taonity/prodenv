@@ -1,0 +1,17 @@
+{
+  "repositorySuffix": "-retained",
+  "stagingRoot": "/retained",
+  "coreRoot": "/userdata",
+  "metricsDirectory": "/metrics",
+  "stateDirectory": "/state",
+  "expectedProjects": ["sinair-llm-bot-prod"],
+  "allowedProjects": ["sinair-llm-bot-prod", "sinair-llm-bot-stage"],
+  "backupScheduleTimeUtc": "02:00",
+  "expiryIntervalSeconds": 300,
+  "expirySafetySeconds": 3600,
+  "policyMaxAgeSeconds": 600,
+  "commandTimeoutSeconds": 1800,
+  "maxExportAgeSeconds": 93600,
+  "validationIntervalSeconds": 86400,
+  "maxRestoreBytes": 8589934592
+}

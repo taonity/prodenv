@@ -188,6 +188,30 @@ services:
     networks:
       - nginx
 
+  backrest-retained-backup:
+    extends:
+      file: backup/backrest/docker-compose.yml
+      service: backrest-retained-backup
+    cpus: 0.50
+    mem_limit: 384m
+    memswap_limit: 512m
+    pids_limit: 128
+    networks:
+      - nginx
+      - backup-validation
+
+  backrest-retained-expiry:
+    extends:
+      file: backup/backrest/docker-compose.yml
+      service: backrest-retained-expiry
+    cpus: 0.50
+    mem_limit: 256m
+    memswap_limit: 384m
+    pids_limit: 128
+    networks:
+      - nginx
+      - backup-validation
+
   backrest-restore-db:
     extends:
       file: backup/backrest/docker-compose.yml
@@ -279,6 +303,9 @@ volumes:
   backrest-tmp:
   backup-staging:
     name: prodenv-backup-staging
+  backup-retained:
+    name: prodenv-backup-retained
+  retained-backup-state:
   backup-restore:
     name: prodenv-backup-restore
   backup-validation-db:

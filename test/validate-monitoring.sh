@@ -14,6 +14,11 @@ sh -n backup/scripts/validate-postgres-restore.sh
 sh -n logging/host-health/install.sh
 sh -n logging/host-health/run.sh
 python3 -m unittest discover -s logging/host-health -p 'test_*.py'
+python3 -m unittest discover -s backup/retained -p 'test_*.py'
+docker build -f backup/retained/Dockerfile -t prodenv-retained-test .
+docker run --rm --network none --user postgres --memory 512m --pids-limit 128 \
+  -e RUN_BACKUP_INTEGRATION=1 --entrypoint python3 prodenv-retained-test \
+  -B -m unittest discover -s /retained-worker -p 'test_*.py'
 python3 - <<'PY' | docker run --rm -i --entrypoint promtool prom/prometheus:v2.47.1 check metrics
 import sys
 sys.path.insert(0, 'logging/host-health')
@@ -45,6 +50,10 @@ done
 docker run --rm --entrypoint promtool \
   -v "$PWD:/work:ro" -w /work \
   prom/prometheus:v2.47.1 test rules test/monitoring-rules.test.yml
+
+docker run --rm --entrypoint promtool \
+  -v "$PWD:/work:ro" -w /work \
+  prom/prometheus:v2.47.1 test rules test/backup-retention-rules.test.yml
 docker run --rm --entrypoint promtool \
   -v "$PWD:/work:ro" -w /work \
   prom/prometheus:v2.47.1 test rules test/web-security-rules.test.yml

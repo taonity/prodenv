@@ -1,0 +1,65 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: backups-ntfy
+    receivers:
+      - uid: backups-ntfy
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: http://ntfy/alert?template=grafana
+          httpMethod: POST
+          authorization_scheme: Bearer
+          authorization_credentials: $NTFY_TOKEN
+          maxAlerts: '10'
+          title: 'Backups: {{ .Status }}'
+          message: |-
+            {{ range .Alerts }}{{ .Annotations.summary }}
+            {{ .Annotations.description }}
+            {{ end }}
+groups:
+  - orgId: 1
+    name: backups
+    folder: Backups
+    interval: 1m
+    rules:
+      - uid: retained-backup-notifications
+        title: Backup retention and recovery
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: Alerting
+        annotations:
+          summary: '{{ $labels.finding }} {{ $labels.project }} {{ $labels.dataset }}'
+          description: 'Inspect retained backup, expiration and restore-validator logs. Expiration failures can violate the record-age limit.'
+        labels:
+          backup: retained
+        notification_settings:
+          receiver: backups-ntfy
+          group_by: [grafana_folder, alertname, project, dataset]
+          group_wait: 0s
+          group_interval: 5m
+          repeat_interval: 1h
+        data:
+          - refId: A
+            datasourceUid: Prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              expr: max by (finding, project, dataset, severity) (label_replace(ALERTS{alertstate="firing",alertname=~"RetainedBackup.*|BackupRecordExpiryFailed|BackupRetentionPolicyStale|ProjectBackupExportOverdue|BackupRestore.*|BackupSnapshotOverdue|BackupMetricsUnreadable"}, "finding", "$1", "alertname", "(.*)")) or vector(0)
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  reducer: {type: last}
+                  type: query

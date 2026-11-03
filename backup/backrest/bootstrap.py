@@ -149,6 +149,16 @@ def configure_repository(client, config, desired, settings):
     if current is None or not contains_desired(current, repository):
         config = client.add_repo(repository)
         print(f"Configured repository {repository['id']!r}.")
+    if "retainedRepository" in desired:
+        retained = copy.deepcopy(desired["retainedRepository"])
+        suffix = retained.pop("uriSuffix")
+        retained.update(id=settings["repository_id"] + suffix,
+                        uri=settings["repository_uri"].rstrip("/") + suffix,
+                        env=repository["env"])
+        current = next((item for item in config.get("repos", []) if item.get("id") == retained["id"]), None)
+        if current is None or not contains_desired(current, retained):
+            config = client.add_repo(retained)
+            print(f"Configured repository {retained['id']!r}.")
     return config
 
 

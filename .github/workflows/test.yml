@@ -7,6 +7,19 @@ on:
   pull_request:
 
 jobs:
+  retained-backups:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test retained backup, expiration and recovery
+        run: |
+          docker build -f backup/retained/Dockerfile -t prodenv-retained-test .
+          docker run --rm --network none --user postgres --memory 512m --pids-limit 128 \
+            -e RUN_BACKUP_INTEGRATION=1 --entrypoint python3 prodenv-retained-test \
+            -B -m unittest discover -s /retained-worker -p 'test_*.py'
+          python3 -B -m unittest discover -s backup/backrest -p 'test_*.py'
+          docker run --rm --entrypoint promtool -v "$PWD:/work:ro" -w /work \
+            prom/prometheus:v2.47.1 test rules test/backup-retention-rules.test.yml
   test:
     runs-on: ubuntu-22.04
     steps:

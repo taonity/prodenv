@@ -74,7 +74,7 @@ class BootstrapTest(unittest.TestCase):
         reconcile(client)
 
         self.assertEqual(client.config["instance"], "prodenv")
-        self.assertEqual(client.add_repo_calls, 1)
+        self.assertEqual(client.add_repo_calls, 2)
         self.assertEqual(client.set_config_calls, 2)
         self.assertFalse(client.config["auth"]["disabled"])
         self.assertEqual(client.config["auth"]["users"][0]["name"], "admin")
@@ -82,7 +82,11 @@ class BootstrapTest(unittest.TestCase):
 
         reconcile(client)
 
-        self.assertEqual(client.add_repo_calls, 1)
+        self.assertEqual(client.add_repo_calls, 2)
+        retained = next(repo for repo in client.config["repos"] if repo["id"] == "offsite-retained")
+        self.assertEqual(retained["uri"], "/tmp/repository-retained")
+        self.assertTrue(retained["autoInitialize"])
+        self.assertNotIn("prunePolicy", retained)
         self.assertEqual(client.set_config_calls, 2)
 
     def test_unknown_managed_plan_metadata_is_preserved(self):

@@ -1,0 +1,52 @@
+groups:
+  - name: retained-backups
+    rules:
+      - alert: BackupRetentionPolicyStale
+        expr: time() - prodenv_backup_policy_timestamp_seconds{job="node"} > 600
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.project }} backup retention policy feed is stale"
+          description: "Check postgres-export. Console retention changes must reach the backup expiration worker promptly."
+      - alert: RetainedBackupWorkerFailed
+        expr: prodenv_backup_retained_worker_success{job="node"} == 0
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Age-bounded backup upload or restore validation failed"
+          description: "Inspect backrest-retained-backup logs. Core, chat and audit backups have separate evidence."
+      - alert: RetainedBackupWorkerStale
+        expr: (time() - prodenv_backup_retained_worker_last_run_timestamp_seconds{job="node"} > 93600 or absent(prodenv_backup_retained_worker_last_run_timestamp_seconds{job="node"})) and on() (max(up{job="node"}) == 1)
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Age-bounded backup worker has stopped reporting"
+          description: "Check the daily backrest-retained-backup job; retained database records may not have been uploaded in the last 26 hours."
+      - alert: BackupRecordExpiryFailed
+        expr: (prodenv_backup_retention_success{job="node"} == 0 or time() - prodenv_backup_retention_last_success_timestamp_seconds{job="node"} > 1800 or absent(prodenv_backup_retention_last_success_timestamp_seconds{job="node"})) and on() (max(up{job="node"}) == 1)
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Record-age backup expiration is failing or overdue"
+          description: "Inspect backrest-retained-expiry immediately. This worker forgets expired snapshots and prunes their data independently of new exports."
+      - alert: ProjectBackupExportOverdue
+        expr: time() - prodenv_backup_dataset_export_timestamp_seconds{job="node"} > 93600
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.project }} {{ $labels.dataset }} export is stale or missing"
+          description: "Inspect postgres-export. New unclassified tables deliberately block database export."
+      - alert: RetainedBackupSnapshotOverdue
+        expr: time() - prodenv_backup_dataset_snapshot_timestamp_seconds{job="node",dataset!="core"} > 93600
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.project }} {{ $labels.dataset }} has no recent confirmed remote snapshot"
+          description: "A successful local export alone does not establish that retained data is available remotely."
+      - alert: RetainedBackupRestoreOverdue
+        expr: time() - prodenv_backup_dataset_validation_timestamp_seconds{job="node",dataset!="core"} > 172800
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.project }} {{ $labels.dataset }} restore validation is overdue"
+          description: "The retained worker downloads a remote cohort and imports PostgreSQL rows daily."

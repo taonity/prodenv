@@ -16,6 +16,7 @@ services:
       - backrest-cache:/cache
       - backrest-tmp:/tmp
       - backup-staging:/userdata:ro
+      - backup-retained:/retained:ro
       - backup-restore:/restore
       - monitoring-textfile:/metrics
       - ../scripts:/hooks:ro
@@ -105,3 +106,38 @@ services:
         condition: service_healthy
       backrest-restore-db:
         condition: service_healthy
+
+  backrest-retained-backup:
+    build:
+      context: ../..
+      dockerfile: backup/retained/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PGHOST: backrest-restore-db
+      PGPASSWORD: restore-validation-only
+      PYTHONDONTWRITEBYTECODE: "1"
+      PGCONNECT_TIMEOUT: "10"
+    volumes:
+      - backup-retained:/retained
+      - backup-staging:/userdata:ro
+      - monitoring-textfile:/metrics
+      - retained-backup-state:/state
+    secrets:
+      - source: backrest-repository-password
+        target: backrest_repository_password
+      - source: backrest-aws-credentials
+        target: backrest_aws_credentials
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backrest-bootstrap:
+        condition: service_completed_successfully
+      backrest-restore-db:
+        condition: service_healthy
+
+  backrest-retained-expiry:
+    extends:
+      service: backrest-retained-backup
+    command: ["--expiry-only"]
