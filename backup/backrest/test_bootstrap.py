@@ -27,6 +27,10 @@ class FakeClient:
         stored.pop("password", None)
         stored["env"] = sorted(stored.get("env", []))
         stored["guid"] = "repository-guid"
+        if stored.get("autoInitialize"):
+            raise bootstrap.BackrestError(
+                "auto_initialize set with guid but guid implies that repo is already initialized"
+            )
         repositories = self.config.setdefault("repos", [])
         for index, current in enumerate(repositories):
             if current["id"] == stored["id"]:
@@ -85,7 +89,7 @@ class BootstrapTest(unittest.TestCase):
         self.assertEqual(client.add_repo_calls, 2)
         retained = next(repo for repo in client.config["repos"] if repo["id"] == "offsite-retained")
         self.assertEqual(retained["uri"], "/tmp/repository-retained")
-        self.assertTrue(retained["autoInitialize"])
+        self.assertNotIn("autoInitialize", retained)
         self.assertNotIn("prunePolicy", retained)
         self.assertEqual(client.set_config_calls, 2)
 

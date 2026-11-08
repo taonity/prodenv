@@ -18,7 +18,6 @@
   },
   "retainedRepository": {
     "uriSuffix": "-retained",
-    "autoInitialize": true,
     "autoUnlock": true,
     "checkPolicy": {
       "schedule": {"maxFrequencyDays": 7, "clock": "CLOCK_LAST_RUN_TIME"},
