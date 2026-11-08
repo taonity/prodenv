@@ -17,7 +17,7 @@ tests:
           - exp_labels: {job: node, instance: host, severity: critical}
             exp_annotations:
               summary: "Record-age backup expiration is failing or overdue"
-              description: "Inspect backrest-retained-expiry immediately. This worker forgets expired snapshots and prunes their data independently of new exports."
+              description: "Inspect sinair-llm-bot-retained-expiry immediately. This worker forgets expired snapshots and prunes their data independently of new exports."
   - interval: 1m
     input_series:
       - series: 'prodenv_backup_dataset_export_timestamp_seconds{job="node",instance="host",project="sinair-llm-bot-prod",dataset="chat"}'
@@ -48,4 +48,4 @@ tests:
           - exp_labels: {job: node, instance: host, severity: warning}
             exp_annotations:
               summary: "Age-bounded backup worker has stopped reporting"
-              description: "Check the daily backrest-retained-backup job; retained database records may not have been uploaded in the last 26 hours."
+              description: "Check the daily sinair-llm-bot-retained-backup job; retained database records may not have been uploaded in the last 26 hours."

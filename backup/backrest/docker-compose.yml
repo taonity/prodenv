@@ -107,7 +107,7 @@ services:
       backrest-restore-db:
         condition: service_healthy
 
-  backrest-retained-backup:
+  sinair-llm-bot-retained-backup:
     build:
       context: ../..
       dockerfile: backup/retained/Dockerfile
@@ -137,7 +137,7 @@ services:
       backrest-restore-db:
         condition: service_healthy
 
-  backrest-retained-expiry:
+  sinair-llm-bot-retained-expiry:
     extends:
-      service: backrest-retained-backup
+      service: sinair-llm-bot-retained-backup
     command: ["--expiry-only"]
