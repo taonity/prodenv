@@ -338,8 +338,8 @@ def validate_entry(client, config, entry, restore_root):
     entries = client.list_files(config["repository"], snapshot_id, entry["path"])
     check_guardrails(entry, dump_size(entries, entry["path"]), restore_root)
     target = restore_root / entry["project"]
+    # Backrest creates the target and rejects existing paths.
     shutil.rmtree(target, ignore_errors=True)
-    target.mkdir(parents=True)
     try:
         operation_id = client.restore(
             config["repository"],
