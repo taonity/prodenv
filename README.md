@@ -1,1 +1,53 @@
-["{\"transientOutputs\":false,\"transientCellMetadata\":{\"runme.dev/name\":true,\"runme.dev/nameGenerated\":true,\"runme.dev/id\":true,\"runme.dev/textRange\":true},\"transientDocumentMetadata\":{},\"cellContentMetadata\":{}}","{\"cells\":[{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"# prodenv\",\"internalMetadata\":{\"internalId\":\"e91f26f3\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"This is a production environment for docker applications. It contains logging, deploying, backingup, and some UI tools.\",\"internalMetadata\":{\"internalId\":\"124d9bc4\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"### Tool list\",\"internalMetadata\":{\"internalId\":\"f445050a\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"- Continuous Delivery\\r\\n   - [generaltao725/docker-webhook](https://hub.docker.com/r/generaltao725/docker-webhook) - updates application on DockerHub update\\r\\n\\r\\n- Logging\\r\\n   - [grafana/grafana](https://hub.docker.com/r/grafana/grafana) - the UI for showing logs\\r\\n   - [grafana/loki](https://hub.docker.com/r/grafana/loki) - like Prometheus, but for logs\\r\\n   - [grafana/promtail](https://hub.docker.com/r/grafana/promtail) - the agent, responsible for gathering logs and sending them to Loki\\r\\n   - [prom/prometheus](https://hub.docker.com/r/prom/prometheus) - server monitoring system\\r\\n   - [prom/node-exporter](https://hub.docker.com/r/prom/node-exporter) - prometheus exporter for metrics\\r\\n   - [minio/minio](https://hub.docker.com/r/minio/minio) - the object store for logs\\r\\n\\r\\n- Backup\\r\\n   - [Backrest](https://github.com/garethgeorge/backrest) - backup UI, scheduling, retention, and health operations\\r\\n   - [restic](https://restic.net/) - encrypted, deduplicated off-site snapshots\\r\\n   - Database-native logical exports - consistent and portable database backups\\r\\n\\r\\n- [portainer/portainer](https://hub.docker.com/r/portainer/portainer) - the UI for Docker\\r\\n- [nginx/nginx](https://hub.docker.com/_/nginx) - reverse proxy\",\"internalMetadata\":{\"internalId\":\"1584fd61\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"### Usage\",\"internalMetadata\":{\"internalId\":\"9294b700\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"All sensitive information is removed for security purposes, this repo is more for review.\\r\\n\\r\\nSee [backup/README.md](backup/README.md) for backup setup, project integration, retention, restore testing, and server migration procedures.\",\"internalMetadata\":{\"internalId\":\"be70af2b\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"### Notes\",\"internalMetadata\":{\"internalId\":\"d41bbec2\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"#### Docker log-retention\",\"internalMetadata\":{\"internalId\":\"9309fe21\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"Configure automatic docker log-retention\\r\\nhttps://docs.docker.com/engine/logging/drivers/json-file/\",\"internalMetadata\":{\"internalId\":\"6aee706f\"}},{\"cellKind\":2,\"language\":\"json\",\"metadata\":{},\"outputs\":[],\"source\":\"{\\r\\n  \\\"log-driver\\\": \\\"json-file\\\",\\r\\n  \\\"log-opts\\\": {\\r\\n    \\\"max-size\\\": \\\"10m\\\",\\r\\n    \\\"max-file\\\": \\\"3\\\"\\r\\n  }\\r\\n}\\r\\n\",\"internalMetadata\":{\"internalId\":\"72487fb4\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"#### Nginx certs reniew\",\"internalMetadata\":{\"internalId\":\"99ef6fca\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"0 */6 * * * docker compose -f /path/to/docker-compose.yml up certbot && docker compose -f /path/to/docker-compose.yml exec nginx nginx -s reload\",\"internalMetadata\":{\"internalId\":\"30262ee7\"}},{\"cellKind\":1,\"language\":\"markdown\",\"metadata\":{},\"outputs\":[],\"source\":\"todo: think about module for nginx for cert generation\",\"internalMetadata\":{\"internalId\":\"2735362b\"}}],\"metadata\":{\"runme.dev/finalLineBreaks\":\"0\",\"runme.dev/cacheId\":\"01M1KPJKXAN6HSDHEH5A7H54FX\",\"runme.dev/id\":\"01M1KPJKXAN6HSDHEH5A7H54FX\"}}"]
+﻿# prodenv
+
+This repository contains a production environment for Docker applications, including logging, deployment, backup, and administration tools.
+
+### Tool list
+
+- **Continuous delivery**
+  - [docker-webhook](https://hub.docker.com/r/generaltao725/docker-webhook) — updates applications when Docker Hub images change
+- **Logging and monitoring**
+  - [Grafana](https://hub.docker.com/r/grafana/grafana) — log and metrics dashboards
+  - [Loki](https://hub.docker.com/r/grafana/loki) — log aggregation
+  - [Promtail](https://hub.docker.com/r/grafana/promtail) — collects and forwards logs to Loki
+  - [Prometheus](https://hub.docker.com/r/prom/prometheus) — monitoring and metrics
+  - [Node Exporter](https://hub.docker.com/r/prom/node-exporter) — host metrics exporter
+  - [MinIO](https://hub.docker.com/r/minio/minio) — object storage for logs
+- **Backup**
+  - [Backrest](https://github.com/garethgeorge/backrest) — backup UI, scheduling, retention, and health operations
+  - [restic](https://restic.net/) — encrypted, deduplicated off-site snapshots
+  - Database-native logical exports — consistent, portable database backups
+- [Portainer](https://hub.docker.com/r/portainer/portainer) — Docker UI
+- [NGINX](https://hub.docker.com/_/nginx) — reverse proxy
+
+### Usage
+
+Sensitive information has been removed; this repository is intended for review.
+
+See [backup/README.md](backup/README.md) for backup setup, project integration, retention, restore testing, and server migration procedures.
+
+### Notes
+
+#### Docker log retention
+
+Configure automatic Docker log retention. See the [Docker JSON-file logging documentation](https://docs.docker.com/engine/logging/drivers/json-file/).
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+```
+
+#### NGINX certificate renewal
+
+Run every six hours to renew certificates and reload NGINX:
+
+```cron
+0 */6 * * * docker compose -f /path/to/docker-compose.yml up certbot && docker compose -f /path/to/docker-compose.yml exec nginx nginx -s reload
+```
+
+TODO: consider an NGINX module for certificate generation.
